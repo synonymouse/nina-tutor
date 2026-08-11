@@ -19,7 +19,9 @@ if (process.env.NODE_ENV === 'production') {
     throw new Error(`Missing required environment variables: ${missingVariables.join(', ')}`);
   }
 
-  if (process.env.RATE_LIMIT_SECRET.length < 32) {
-    throw new Error('RATE_LIMIT_SECRET must be at least 32 characters long');
+  const rateLimitSecret = process.env.RATE_LIMIT_SECRET.trim();
+
+  if (rateLimitSecret.length < 32 || rateLimitSecret.startsWith('replace-with-')) {
+    throw new Error('RATE_LIMIT_SECRET must be at least 32 characters and not be a placeholder');
   }
 }
