@@ -64,7 +64,7 @@ The contact sheet offers three equal choices:
 
 - Telegram: `https://t.me/ninixer`.
 - WhatsApp: `https://wa.me/79777498243` with a short prefilled introductory message.
-- Site form: scrolls to or reveals the form without closing the visitor's context.
+- Site form: closes the contact sheet, scrolls to the always-present form, and moves focus to its heading.
 
 The provided email `dyachenko.nina139@gmail.com` is available as a direct `mailto:` fallback in the footer and error state. It is not the primary automated form notification destination unless cross-border processing has been separately reviewed.
 
@@ -190,7 +190,7 @@ Headings use tight but readable line height and responsive `clamp()` sizing. Bod
 
 Convert `docs/nina_photo.HEIC` during the build workflow to correctly oriented source assets. Produce AVIF and WebP variants with JPEG fallback and explicit dimensions.
 
-Use separate crops for desktop and mobile through Astro's image pipeline or `<picture>`. Preserve Nina and the child as the focal point. Do not apply aggressive background removal or AI reconstruction.
+Use separate crops for desktop and mobile through Astro's image pipeline and responsive picture output. Preserve Nina and the child as the focal point. Do not apply aggressive background removal or AI reconstruction.
 
 Publication assumes the client has permission to use the child's image. This permission is a launch responsibility, not inferred by the application.
 
@@ -204,7 +204,7 @@ All nonessential motion is disabled under `prefers-reduced-motion: reduce`. Cont
 
 ### Navigation
 
-Anchor navigation uses native links and accounts for the sticky header with `scroll-margin`. The current section may be indicated only if this can be done with negligible JavaScript and without harming performance.
+Anchor navigation uses native links and accounts for the sticky header with `scroll-margin`. The first release does not add scrollspy or an active-section script.
 
 ### Contact Sheet
 
@@ -214,7 +214,7 @@ The dialog contains direct Telegram and WhatsApp links plus an action that moves
 
 ### Mobile CTA
 
-After the hero leaves the viewport, a compact fixed CTA may appear at the bottom of small screens. It must not cover focused inputs, the cookie consent panel, or the final contact section. It hides while the contact dialog is open.
+After the hero leaves the viewport, a compact fixed CTA appears at the bottom of small screens. It must not cover focused inputs, the cookie consent panel, or the final contact section. It hides while the contact dialog is open.
 
 ### FAQ
 
@@ -232,6 +232,8 @@ Use `<details>` and `<summary>`. The page works with all items collapsed by defa
 
 The form states: `Не указывайте фамилию ребенка, диагнозы, документы и другие чувствительные сведения.`
 
+The markup uses a normal same-origin HTML `POST` action. JavaScript enhances it with inline status updates but is not required to deliver the request.
+
 ### Separate Consent
 
 The checkbox label links to a standalone consent document. The privacy policy is a separate link. Analytics consent is not bundled with form consent.
@@ -243,7 +245,7 @@ The consent document is versioned. Each accepted submission records the consent 
 - Idle: fields and consent are editable.
 - Invalid: a summary and field-level messages appear without deleting entered values.
 - Submitting: the submit button is disabled and exposes an accessible busy state.
-- Success: show a generated request reference and the expected response channel.
+- Success: enhanced submissions show a generated request reference; the native thank-you page confirms that the inquiry was saved without exposing form data in the URL.
 - Server error: retain data, explain that the request was not confirmed, allow retry, and show Telegram, WhatsApp, and direct email fallbacks.
 - Notification error after storage: return success because the canonical lead is saved; log and alert the delivery failure server-side.
 
@@ -307,6 +309,7 @@ The landing page and legal pages export `prerender = true`. The contact API rout
 - `src/pages/index.astro`: assembles the marketing page and declares prerendering.
 - `src/pages/privacy.astro`: prerendered privacy policy.
 - `src/pages/consent.astro`: prerendered standalone form consent.
+- `src/pages/thanks.astro`: prerendered no-JavaScript submission confirmation.
 - `src/pages/api/contact.ts`: same-origin POST endpoint.
 - `src/layouts/BaseLayout.astro`: metadata, fonts, global shell, and consent bootstrap.
 - `src/components/`: focused page sections and reusable interaction components.
@@ -324,17 +327,18 @@ Components receive typed content and do not query storage or environment variabl
 3. Analytics loads only after explicit consent and reads allowed attribution values.
 4. A CTA opens the contact sheet or moves to the fallback contact section.
 5. Messenger choices navigate directly and emit a Metrica goal only when analytics is active.
-6. The form POSTs same-origin JSON to `/api/contact`.
-7. The server checks origin, content type, lengths, consent, honeypot, and rate limit.
+6. The form POSTs to `/api/contact` as JSON when enhanced or as standard form data without JavaScript.
+7. The server checks origin, supported content type, lengths, consent, honeypot, and rate limit.
 8. The server writes the canonical request and consent record to SQLite on Russian storage.
 9. The server attempts a notification through a Russian-hosted SMTP mailbox.
-10. The response returns a request ID. A `form_success` goal is emitted only after a successful API response and only when analytics is active.
+10. Enhanced requests receive JSON with a request ID; native HTML submissions receive a `303` redirect to `/thanks/`.
+11. A `form_success` goal is emitted only after a successful enhanced API response and only when analytics is active.
 
 ### Error Handling
 
 - Reject unsupported methods with `405` and an `Allow` header.
 - Reject wrong-origin state-changing requests with `403`.
-- Return structured field errors with `400`.
+- Return structured field errors with `400` for enhanced requests and a small accessible HTML error response for native submissions.
 - Return `429` with a calm retry message when the short rate limit is exceeded.
 - Return `503` if canonical storage is unavailable; never claim a request was accepted before persistence succeeds.
 - Treat notification failure as a saved lead with a pending notification status, not as lost data.
@@ -342,13 +346,13 @@ Components receive typed content and do not query storage or environment variabl
 
 ### Spam And Abuse Controls
 
-Use same-origin checks, the honeypot, minimum completion time, strict length limits, and a conservative per-IP-hash rate limit. Do not introduce a CAPTCHA in the first release. Add one only if observed abuse justifies its accessibility, privacy, and performance cost.
+Use same-origin checks, the honeypot, strict length limits, and a conservative per-IP-hash rate limit. Enhanced submissions also carry a start timestamp for a minimum-completion-time check; native submissions remain valid without it. Do not introduce a CAPTCHA in the first release. Add one only if observed abuse justifies its accessibility, privacy, and performance cost.
 
 ## SEO And Sharing
 
 The page includes a unique Russian title and description, canonical URL, Open Graph metadata, Telegram-friendly preview image, semantic headings, descriptive image alt text, and structured data appropriate to a person/professional service without invented ratings.
 
-Generate `robots.txt` and `sitemap.xml`. Legal pages are excluded from promotional indexing if their final content does not warrant search visibility.
+Generate `robots.txt` and `sitemap.xml`. Legal and submission-confirmation pages use `noindex,follow` and are excluded from the sitemap.
 
 The first release targets brand and service relevance, not broad organic acquisition. Later service pages may be added under stable routes without changing the landing page structure.
 
