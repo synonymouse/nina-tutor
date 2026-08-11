@@ -1,0 +1,36 @@
+{
+  "name": "nina-tutor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "check": "astro check",
+    "build": "npm run check && astro build",
+    "start": "node scripts/validate-env.mjs && node dist/server/entry.mjs",
+    "preview": "node dist/server/entry.mjs",
+    "test": "vitest run",
+    "test:e2e": "PUBLIC_YANDEX_METRICA_ID=123456 npm run build && playwright test"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.1",
+    "@astrojs/sitemap": "^3.7.3",
+    "@fontsource-variable/literata": "^5.3.0",
+    "@fontsource-variable/onest": "^5.3.0",
+    "astro": "^7.2.1",
+    "better-sqlite3": "^13.0.3",
+    "nodemailer": "^9.0.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@playwright/test": "^1.62.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/nodemailer": "^8.0.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  }
+}
