@@ -1,0 +1,39 @@
+---
+import { site } from '../content/site';
+
+const navigation = [
+  ['Подход', '#approach'],
+  ['Обо мне', '#about'],
+  ['Форматы', '#offers'],
+] as const;
+---
+
+<header class="site-header">
+  <div class="site-header__inner shell">
+    <a class="site-header__brand" href="#top">
+      <span class="site-header__name">{site.name}</span>
+      <span class="site-header__role">{site.role}</span>
+    </a>
+
+    <div class="site-header__desktop">
+      <nav class="site-header__nav" aria-label="Основная навигация">
+        {navigation.map(([label, href]) => <a href={href}>{label}</a>)}
+      </nav>
+      <a class="button button--light" href="#contact" data-contact-trigger>
+        Обсудить ситуацию
+      </a>
+    </div>
+
+    <details class="site-header__mobile">
+      <summary aria-label="Открыть меню">
+        <span class="site-header__menu-icon" aria-hidden="true"></span>
+      </summary>
+      <nav class="site-header__mobile-panel" aria-label="Мобильная навигация">
+        {navigation.map(([label, href]) => <a href={href}>{label}</a>)}
+        <a class="button button--yellow" href="#contact" data-contact-trigger>
+          Обсудить ситуацию
+        </a>
+      </nav>
+    </details>
+  </div>
+</header>

@@ -1,0 +1,44 @@
+---
+import { Picture } from 'astro:assets';
+
+import ninaHero from '../assets/nina-hero.jpg';
+import { site } from '../content/site';
+
+const emphasizedTitle = 'самостоятельно.';
+const [titleBeforeEmphasis, titleAfterEmphasis] = site.hero.title.split(emphasizedTitle);
+---
+
+<section class="hero" id="top" data-hero aria-labelledby="hero-title">
+  <div class="hero__grid shell">
+    <div class="hero__content">
+      <p class="eyebrow">{site.hero.eyebrow}</p>
+      <h1 class="hero__title" id="hero-title">
+        {titleBeforeEmphasis}<em>{emphasizedTitle}</em>{titleAfterEmphasis}
+      </h1>
+      <p class="hero__body">{site.hero.body}</p>
+      <p class="hero__trust">{site.hero.trust}</p>
+      <div class="hero__actions">
+        <a class="button button--yellow hero__cta" href="#contact" data-contact-trigger>
+          {site.hero.cta}
+        </a>
+        <p class="hero__note">{site.hero.note}</p>
+      </div>
+    </div>
+
+    <div class="hero__visual">
+      <Picture
+        src={ninaHero}
+        formats={['avif', 'webp']}
+        widths={[480, 720, 960]}
+        sizes="(max-width: 759px) calc(100vw - 3rem), (max-width: 1180px) 38vw, 464px"
+        alt="Нина Дьяченко общается с ребенком"
+        loading="eager"
+        decoding="async"
+        fetchpriority="high"
+        class="hero__image"
+        pictureAttributes={{ class: 'hero__picture' }}
+      />
+      <div class="hero__stamp" aria-hidden="true">8 лет /<br />в образовании</div>
+    </div>
+  </div>
+</section>

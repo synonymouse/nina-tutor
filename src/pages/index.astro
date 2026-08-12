@@ -1,14 +1,14 @@
 ---
+import Hero from '../components/Hero.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
 export const prerender = true;
 ---
 
-<!doctype html>
-<html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Нина Дьяченко</title>
-  </head>
-  <body>
-    <h1>Нина Дьяченко</h1>
-  </body>
-</html>
+<BaseLayout>
+  <SiteHeader />
+  <main id="main">
+    <Hero />
+  </main>
+</BaseLayout>

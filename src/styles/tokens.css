@@ -1,0 +1,46 @@
+:root {
+  --ink: #20382f;
+  --ink-soft: #52645d;
+  --cream: #f5efe5;
+  --paper: #fffaf2;
+  --berry: #a82f56;
+  --rose: #d99aad;
+  --butter: #efd36f;
+  --mist: #c9e5e3;
+  --line: color-mix(in srgb, var(--ink) 20%, transparent);
+
+  --font-body: 'Onest Variable', 'Onest', system-ui, sans-serif;
+  --font-display: 'Literata Variable', 'Literata', Georgia, serif;
+
+  --step--1: clamp(0.875rem, 0.83rem + 0.2vw, 0.975rem);
+  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  --step-1: clamp(1.15rem, 1.06rem + 0.42vw, 1.375rem);
+  --step-2: clamp(1.38rem, 1.2rem + 0.76vw, 1.8rem);
+  --step-3: clamp(1.72rem, 1.39rem + 1.38vw, 2.5rem);
+  --step-4: clamp(2.15rem, 1.55rem + 2.52vw, 3.6rem);
+  --step-5: clamp(2.8rem, 1.9rem + 3.5vw, 4.65rem);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4.5rem;
+  --space-9: 6.5rem;
+
+  --shell: min(1180px, calc(100% - 2rem));
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.75rem;
+  --radius-pill: 100vmax;
+  --shadow-hard: 5px 5px 0 var(--ink);
+  --header-height: 4.5rem;
+}
+
+@media (min-width: 760px) {
+  :root {
+    --header-height: 5rem;
+  }
+}
