@@ -1299,8 +1299,7 @@
   outline-color: var(--butter);
 }
 
-.contact-form :focus-visible,
-.contact-dialog__options :is(a, button):focus-visible {
+.contact-form :focus-visible {
   outline-color: var(--berry);
 }
 
