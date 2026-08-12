@@ -1,0 +1,38 @@
+---
+import { faq } from '../content/site';
+---
+
+<section class="section principle" aria-labelledby="principle-title">
+  <div class="shell">
+    <p class="eyebrow">Важно</p>
+    <h2 class="principle__title" id="principle-title">
+      Я не обещаю <em>«исправить ребенка».</em>
+    </h2>
+    <p class="principle__body">
+      Ребенок — не проект, который нужно оптимизировать. Мне важно, чтобы он понимал себя,
+      принимал решения, не боялся пробовать и учился на своих ошибках.
+    </p>
+  </div>
+</section>
+
+<section class="section faq" aria-labelledby="faq-title">
+  <div class="shell faq__grid">
+    <header class="faq__header">
+      <p class="eyebrow">FAQ</p>
+      <h2 class="faq__title" id="faq-title">Коротко о важном</h2>
+    </header>
+    <div class="faq__list">
+      {
+        faq.map(([question, answer]) => (
+          <details>
+            <summary>
+              <span>{question}</span>
+              <span class="faq__plus" aria-hidden="true">+</span>
+            </summary>
+            <p>{answer}</p>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>

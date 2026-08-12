@@ -1,0 +1,40 @@
+---
+import { offers } from '../content/site';
+
+const groups = [
+  ['start', 'Можно начать с одного разговора'],
+  ['support', 'Или выстроить долгосрочный маршрут'],
+] as const;
+---
+
+<section class="section offers" id="offers" aria-labelledby="offers-title">
+  <div class="shell">
+    <p class="eyebrow">Форматы работы</p>
+    <h2 class="offers__title" id="offers-title">
+      Выберите не программу, а <em>подходящую точку старта.</em>
+    </h2>
+
+    {
+      groups.map(([key, label]) => (
+        <div class="offer-group">
+          <h3>{label}</h3>
+          <div class="offer-grid">
+            {offers
+              .filter((offer) => offer.group === key)
+              .map((offer) => (
+                <article class:list={['offer', { 'offer--featured': offer.featured }]}>
+                  <h4>{offer.title}</h4>
+                  <p class="offer__price">{offer.price}</p>
+                  <p class="offer__audience">{offer.audience}</p>
+                  <p class="offer__details">{offer.details}</p>
+                  <a class="button button--light" href="#contact" data-contact-trigger>
+                    {offer.cta}
+                  </a>
+                </article>
+              ))}
+          </div>
+        </div>
+      ))
+    }
+  </div>
+</section>

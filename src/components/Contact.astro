@@ -1,0 +1,116 @@
+---
+import { site } from '../content/site';
+
+const currentYear = new Date().getFullYear();
+---
+
+<section class="section contact" id="contact" aria-labelledby="contact-title">
+  <div class="shell contact__grid">
+    <div class="contact__intro">
+      <p class="eyebrow">Начните со знакомства</p>
+      <h2 class="contact__title" id="contact-title" tabindex="-1">
+        А что, если ребенку нужен взрослый, который поможет <em
+          >обходиться без постоянного контроля?</em
+        >
+      </h2>
+      <p class="contact__lead">
+        За 20–30 минут мы обсудим вашу ситуацию и поймем, могу ли я быть полезна семье.
+      </p>
+      <div class="contact__links" aria-label="Связаться напрямую">
+        <a
+          href={site.contacts.telegram}
+          target="_blank"
+          rel="noreferrer"
+          data-goal="telegram_click">Telegram <span aria-hidden="true">↗</span></a
+        >
+        <a
+          href={site.contacts.whatsapp}
+          target="_blank"
+          rel="noreferrer"
+          data-goal="whatsapp_click">WhatsApp <span aria-hidden="true">↗</span></a
+        >
+        <a href={site.contacts.email}>Email <span aria-hidden="true">↗</span></a>
+      </div>
+    </div>
+
+    <form class="contact-form" method="POST" action="/api/contact" data-contact-form>
+      <div class="form-summary" data-form-summary tabindex="-1" hidden></div>
+
+      <label class="contact-form__field">
+        <span>Ваше имя</span>
+        <input
+          class="ym-disable-keys"
+          type="text"
+          name="name"
+          autocomplete="name"
+          minlength="2"
+          maxlength="80"
+          required
+        />
+      </label>
+
+      <label class="contact-form__field">
+        <span>Удобный контакт</span>
+        <input
+          class="ym-disable-keys"
+          type="text"
+          name="preferredContact"
+          autocomplete="off"
+          minlength="3"
+          maxlength="120"
+          aria-describedby="contact-hint"
+          required
+        />
+      </label>
+      <small class="contact-form__hint" id="contact-hint">Телефон, email или ник в мессенджере</small>
+
+      <label class="contact-form__field">
+        <span>Коротко о ситуации</span>
+        <textarea
+          class="ym-disable-keys"
+          name="situation"
+          rows="5"
+          minlength="10"
+          maxlength="1000"
+          aria-describedby="situation-hint"
+          required></textarea>
+      </label>
+      <small class="contact-form__hint" id="situation-hint">
+        Не указывайте фамилию ребенка, диагнозы, документы и другие чувствительные сведения.
+      </small>
+
+      <label class="consent-check">
+        <input type="checkbox" name="consent" required />
+        <span>
+          Даю <a href="/consent/" target="_blank" rel="noopener"
+            >согласие на обработку персональных данных</a
+          > и ознакомился(-ась) с <a href="/privacy/" target="_blank" rel="noopener">политикой</a>.
+        </span>
+      </label>
+
+      <input type="hidden" name="consentVersion" value="1.0" />
+      <input type="hidden" name="startedAt" value="" data-started-at />
+      <label class="honeypot" aria-hidden="true">
+        Ваш сайт
+        <input type="text" name="website" tabindex="-1" autocomplete="off" />
+      </label>
+
+      <button class="button button--yellow contact-form__submit" type="submit">
+        Отправить заявку
+      </button>
+      <p class="form-status" role="status" aria-live="polite" data-form-status></p>
+    </form>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="shell site-footer__inner">
+    <p>© {currentYear} {site.name}</p>
+    <nav aria-label="Правовая информация">
+      <a href="/privacy/">Политика</a>
+      <a href="/consent/">Согласие</a>
+      <button type="button" data-open-cookie-settings>Настройки аналитики</button>
+    </nav>
+    <p>Онлайн · русскоязычные семьи по всему миру</p>
+  </div>
+</footer>

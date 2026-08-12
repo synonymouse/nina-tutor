@@ -1,0 +1,39 @@
+---
+import { site } from '../content/site';
+---
+
+<dialog class="contact-dialog" data-contact-dialog aria-labelledby="contact-dialog-title">
+  <div class="contact-dialog__head">
+    <h2 id="contact-dialog-title">Как вам удобнее?</h2>
+    <button type="button" data-dialog-close aria-label="Закрыть">
+      <span aria-hidden="true">×</span>
+    </button>
+  </div>
+  <p>Выберите способ для бесплатного знакомства.</p>
+  <div class="contact-dialog__options">
+    <a
+      href={site.contacts.telegram}
+      target="_blank"
+      rel="noreferrer"
+      data-goal="telegram_click"
+    >
+      <span>Написать в Telegram</span>
+      <span aria-hidden="true">↗</span>
+    </a>
+    <a
+      href={site.contacts.whatsapp}
+      target="_blank"
+      rel="noreferrer"
+      data-goal="whatsapp_click"
+    >
+      <span>Написать в WhatsApp</span>
+      <span aria-hidden="true">↗</span>
+    </a>
+    <button type="button" data-dialog-form>
+      <span>Оставить заявку</span>
+      <span aria-hidden="true">↓</span>
+    </button>
+  </div>
+</dialog>
+
+<script src="../scripts/contact-dialog.ts"></script>
