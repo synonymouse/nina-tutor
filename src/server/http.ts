@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import type { TrustedProxyHeader } from './config';
 
 function validPort(value: string | undefined): boolean {
   if (value === undefined) return true;
@@ -16,11 +17,12 @@ function normalizeIp(value: string | null): string | null {
   if (bracketed) {
     const address = bracketed[1];
     return address && validPort(bracketed[2]) && isIP(address) === 6
-      ? address.toLowerCase()
+      ? normalizeAddress(address)
       : null;
   }
 
-  if (isIP(candidate)) return candidate.toLowerCase();
+  const normalizedAddress = normalizeAddress(candidate);
+  if (normalizedAddress) return normalizedAddress;
 
   const ipv4WithPort = candidate.match(/^(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})$/);
   if (!ipv4WithPort) return null;
@@ -29,17 +31,27 @@ function normalizeIp(value: string | null): string | null {
   return address && validPort(ipv4WithPort[2]) && isIP(address) === 4 ? address : null;
 }
 
-export function getClientIp(headers: Headers): string | null {
-  const cloudflareIp = normalizeIp(headers.get('cf-connecting-ip'));
-  if (cloudflareIp) return cloudflareIp;
+function normalizeAddress(address: string): string | null {
+  const version = isIP(address);
+  if (version === 4) return address;
+  if (version !== 6) return null;
 
-  const realIp = normalizeIp(headers.get('x-real-ip'));
-  if (realIp) return realIp;
+  try {
+    return new URL(`http://[${address}]/`).hostname.slice(1, -1);
+  } catch {
+    return null;
+  }
+}
 
-  const forwardedFor = headers.get('x-forwarded-for');
-  if (!forwardedFor || /[\r\n\0]/.test(forwardedFor)) return null;
+export function getClientIp(
+  headers: Headers,
+  trustedHeader: TrustedProxyHeader,
+): string | null {
+  const value = headers.get(trustedHeader);
+  if (trustedHeader !== 'x-forwarded-for') return normalizeIp(value);
+  if (!value || /[\r\n\0]/.test(value)) return null;
 
-  return normalizeIp(forwardedFor.split(',', 1)[0] ?? null);
+  return normalizeIp(value.split(',', 1)[0] ?? null);
 }
 
 export function wantsJson(request: Request): boolean {
@@ -49,9 +61,18 @@ export function wantsJson(request: Request): boolean {
     .toLowerCase();
   if (contentType === 'application/json') return true;
 
-  return (request.headers.get('accept') ?? '')
-    .split(',')
-    .some((value) => value.split(';', 1)[0]?.trim().toLowerCase() === 'application/json');
+  return (request.headers.get('accept') ?? '').split(',').some((value) => {
+    const [mediaType, ...parameters] = value.split(';');
+    if (mediaType?.trim().toLowerCase() !== 'application/json') return false;
+
+    const quality = parameters
+      .map((parameter) => parameter.trim().toLowerCase())
+      .find((parameter) => parameter.startsWith('q='));
+    if (!quality) return true;
+
+    const parsedQuality = Number(quality.slice(2));
+    return Number.isFinite(parsedQuality) && parsedQuality > 0 && parsedQuality <= 1;
+  });
 }
 
 function escapeHtml(value: string): string {

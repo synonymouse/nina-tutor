@@ -16,8 +16,13 @@ const booleanString = z.preprocess((value) => {
 const serverConfigSchema = z.object({
   LEADS_DB_PATH: z.string().trim().min(1).default('./var/leads.db'),
   LEAD_NOTIFICATION_EMAIL: z.email(),
+  // Timeweb must overwrite this header and prevent clients from supplying it directly.
+  TRUSTED_PROXY_HEADER: z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+    z.enum(['x-real-ip', 'cf-connecting-ip', 'x-forwarded-for']).default('x-real-ip'),
+  ),
   SMTP_HOST: z.string().trim().min(1),
-  SMTP_PORT: z.coerce.number().int().positive().default(465),
+  SMTP_PORT: z.coerce.number().int().positive().max(65_535).default(465),
   SMTP_SECURE: booleanString,
   SMTP_USER: z.string().trim().min(1),
   SMTP_PASSWORD: z.string().min(1),
@@ -32,6 +37,7 @@ const serverConfigSchema = z.object({
 });
 
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
+export type TrustedProxyHeader = ServerConfig['TRUSTED_PROXY_HEADER'];
 
 let cachedConfig: ServerConfig | undefined;
 

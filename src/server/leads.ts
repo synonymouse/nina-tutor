@@ -16,8 +16,6 @@ export interface LeadRecord {
   notification_status: NotificationStatus;
 }
 
-const retentionMs = 365 * 24 * 60 * 60 * 1000;
-
 export function saveLead(input: LeadInput): { id: string; createdAt: string } {
   const database = getDatabase();
   const id = randomUUID();
@@ -43,22 +41,16 @@ export function saveLead(input: LeadInput): { id: string; createdAt: string } {
       utm_json
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  const deleteExpired = database.prepare('DELETE FROM leads WHERE created_at < ?');
-  const persist = database.transaction(() => {
-    insert.run(
-      id,
-      createdAt,
-      input.name,
-      input.preferredContact,
-      input.situation,
-      input.consentVersion,
-      createdAt,
-      attribution,
-    );
-    deleteExpired.run(new Date(nowMs - retentionMs).toISOString());
-  });
-
-  persist.immediate();
+  insert.run(
+    id,
+    createdAt,
+    input.name,
+    input.preferredContact,
+    input.situation,
+    input.consentVersion,
+    createdAt,
+    attribution,
+  );
   return { id, createdAt };
 }
 

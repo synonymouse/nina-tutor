@@ -8,7 +8,7 @@ const excludedSitemapPaths = ['/privacy/', '/consent/', '/thanks/'];
 export default defineConfig({
   site,
   output: 'server',
-  adapter: node({ mode: 'standalone' }),
+  adapter: node({ mode: 'standalone', bodySizeLimit: 16 * 1024 }),
   integrations: [
     sitemap({
       filter: (page) => !excludedSitemapPaths.some((path) => page.endsWith(path)),

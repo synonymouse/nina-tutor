@@ -12,6 +12,11 @@ function getTransport(): Transporter {
     host: config.SMTP_HOST,
     port: config.SMTP_PORT,
     secure: config.SMTP_SECURE,
+    requireTLS: !config.SMTP_SECURE,
+    tls: { minVersion: 'TLSv1.2' },
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 15_000,
     auth: {
       user: config.SMTP_USER,
       pass: config.SMTP_PASSWORD,

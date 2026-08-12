@@ -4,6 +4,39 @@ import { dirname } from 'node:path';
 import { getServerConfig } from './config';
 
 let database: Database.Database | undefined;
+let maintenanceTimer: ReturnType<typeof setInterval> | undefined;
+
+const leadRetentionMs = 365 * 24 * 60 * 60 * 1000;
+const rateEventRetentionMs = 10 * 60 * 1000;
+const maintenanceIntervalMs = 6 * 60 * 60 * 1000;
+
+function cleanupExpiredDataIn(openedDatabase: Database.Database, now: number): void {
+  const cleanup = openedDatabase.transaction(() => {
+    openedDatabase
+      .prepare('DELETE FROM leads WHERE created_at < ?')
+      .run(new Date(now - leadRetentionMs).toISOString());
+    openedDatabase
+      .prepare('DELETE FROM rate_events WHERE created_at < ?')
+      .run(now - rateEventRetentionMs);
+  });
+
+  cleanup.immediate();
+}
+
+function scheduleMaintenance(): void {
+  if (maintenanceTimer) return;
+
+  maintenanceTimer = setInterval(() => {
+    if (!database) return;
+
+    try {
+      cleanupExpiredDataIn(database, Date.now());
+    } catch {
+      console.error('Expired lead data cleanup failed');
+    }
+  }, maintenanceIntervalMs);
+  maintenanceTimer.unref();
+}
 
 export function getDatabase(): Database.Database {
   if (database) return database;
@@ -40,16 +73,27 @@ export function getDatabase(): Database.Database {
       CREATE INDEX IF NOT EXISTS rate_events_lookup
         ON rate_events(ip_hash, created_at);
     `);
+    cleanupExpiredDataIn(openedDatabase, Date.now());
   } catch (error) {
     openedDatabase.close();
     throw error;
   }
 
   database = openedDatabase;
+  scheduleMaintenance();
   return database;
 }
 
+export function cleanupExpiredData(now = Date.now()): void {
+  cleanupExpiredDataIn(getDatabase(), now);
+}
+
 export function closeDatabase(): void {
+  if (maintenanceTimer) {
+    clearInterval(maintenanceTimer);
+    maintenanceTimer = undefined;
+  }
+
   const openedDatabase = database;
   database = undefined;
 
