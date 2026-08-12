@@ -1415,3 +1415,111 @@
     display: inline-flex;
   }
 }
+
+.legal {
+  width: min(52rem, calc(100% - 2rem));
+  min-height: 100svh;
+  padding-block: var(--space-7);
+}
+
+.legal h1 {
+  max-width: 18ch;
+  margin-bottom: var(--space-6);
+  font-size: var(--step-3);
+}
+
+.legal h2 {
+  margin-block: 2.5rem var(--space-3);
+  font-size: var(--step-1);
+  letter-spacing: -0.02em;
+}
+
+.legal p {
+  max-width: 52rem;
+}
+
+.legal__review {
+  margin-block: var(--space-7) var(--space-5);
+  padding: var(--space-4);
+  border-left: 0.3rem solid var(--berry);
+  background: var(--paper);
+}
+
+.cookie-consent {
+  position: fixed;
+  z-index: 90;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  display: grid;
+  width: min(
+    42rem,
+    calc(100% - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right))
+  );
+  max-height: calc(100dvh - 2rem - env(safe-area-inset-bottom));
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  padding: 1.1rem;
+  overflow-y: auto;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 0.25);
+}
+
+.cookie-consent[hidden] {
+  display: none;
+}
+
+.cookie-consent__copy {
+  min-width: 0;
+}
+
+.cookie-consent h2 {
+  margin-bottom: 0.3rem;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.cookie-consent p {
+  margin-bottom: 0.3rem;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.cookie-consent a {
+  font-size: 1rem;
+  text-underline-offset: 0.2em;
+}
+
+.cookie-consent__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cookie-consent__actions .button {
+  min-height: 2.75rem;
+  font-size: 1rem;
+}
+
+@media (max-width: 680px) {
+  .cookie-consent {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cookie-consent__actions .button {
+    flex: 1 1 9rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .cookie-consent__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cookie-consent__actions .button {
+    width: 100%;
+  }
+}

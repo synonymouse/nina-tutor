@@ -1,1 +1,16 @@
-<div hidden data-cookie-consent></div>
+<aside class="cookie-consent" data-cookie-panel hidden aria-labelledby="cookie-title">
+  <div class="cookie-consent__copy">
+    <h2 id="cookie-title">Аналитика посещений</h2>
+    <p>
+      Можно разрешить Яндекс Метрику, чтобы понимать источники обращений. Отказ не влияет на работу
+      сайта.
+    </p>
+    <a href="/privacy/">Подробнее в политике</a>
+  </div>
+  <div class="cookie-consent__actions">
+    <button class="button button--light" type="button" data-cookie-decline>Не разрешать</button>
+    <button class="button button--yellow" type="button" data-cookie-accept>Разрешить</button>
+  </div>
+</aside>
+
+<script src="../scripts/analytics.ts"></script>
