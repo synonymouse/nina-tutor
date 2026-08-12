@@ -20,7 +20,7 @@ const navigation = [
         {navigation.map(([label, href]) => <a href={href}>{label}</a>)}
       </nav>
       <a class="button button--light" href="#contact" data-contact-trigger>
-        Обсудить ситуацию
+        {site.hero.cta}
       </a>
     </div>
 
@@ -31,7 +31,7 @@ const navigation = [
       <nav class="site-header__mobile-panel" aria-label="Мобильная навигация">
         {navigation.map(([label, href]) => <a href={href}>{label}</a>)}
         <a class="button button--yellow" href="#contact" data-contact-trigger>
-          Обсудить ситуацию
+          {site.hero.cta}
         </a>
       </nav>
     </details>
