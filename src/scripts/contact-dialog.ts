@@ -21,12 +21,25 @@ if (dialog && dialog.dataset.initialized !== 'true') {
     });
 
     dialog.addEventListener('click', (event) => {
-      if (event.target === dialog) {
+      const { left, right, top, bottom } = dialog.getBoundingClientRect();
+      const clickedOutside =
+        event.clientX < left ||
+        event.clientX > right ||
+        event.clientY < top ||
+        event.clientY > bottom;
+
+      if (event.target === dialog && clickedOutside) {
         dialog.close();
       }
     });
 
     dialog.querySelector<HTMLButtonElement>('[data-dialog-form]')?.addEventListener('click', () => {
+      document
+        .querySelectorAll<HTMLDetailsElement>('.site-header__mobile[open]')
+        .forEach((mobileNavigation) => {
+          mobileNavigation.open = false;
+        });
+
       dialog.close();
 
       const contactTitle = document.querySelector<HTMLElement>('#contact-title');

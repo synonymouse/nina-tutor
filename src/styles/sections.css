@@ -1295,6 +1295,15 @@
   background: var(--mist);
 }
 
+:is(.approach, .principle, .contact, .contact-dialog, .site-footer) :focus-visible {
+  outline-color: var(--butter);
+}
+
+.contact-form :focus-visible,
+.contact-dialog__options :is(a, button):focus-visible {
+  outline-color: var(--berry);
+}
+
 .mobile-cta {
   position: fixed;
   z-index: 35;
