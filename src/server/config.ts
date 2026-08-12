@@ -24,8 +24,9 @@ const serverConfigSchema = z.object({
   SMTP_FROM: z.email(),
   RATE_LIMIT_SECRET: z
     .string()
+    .trim()
     .min(32)
-    .refine((value) => !value.trimStart().toLowerCase().startsWith('replace-with'), {
+    .refine((value) => !value.toLowerCase().startsWith('replace-with'), {
       message: 'RATE_LIMIT_SECRET must not be a documentation placeholder',
     }),
 });

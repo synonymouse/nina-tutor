@@ -19,11 +19,12 @@ export function consumeRateLimit(ip: string | null, now = Date.now()): boolean {
   const database = getDatabase();
   const ipHash = hashClientIp(ip, now);
   const cutoff = now - windowMs;
+  const cutoffIpHash = hashClientIp(ip, cutoff);
   const deleteExpired = database.prepare('DELETE FROM rate_events WHERE created_at < ?');
   const countEvents = database.prepare(`
     SELECT COUNT(*) AS count
     FROM rate_events
-    WHERE ip_hash = ? AND created_at >= ?
+    WHERE ip_hash IN (?, ?) AND created_at >= ?
   `);
   const insertEvent = database.prepare(
     'INSERT INTO rate_events (ip_hash, created_at) VALUES (?, ?)',
@@ -31,7 +32,7 @@ export function consumeRateLimit(ip: string | null, now = Date.now()): boolean {
   const consume = database.transaction(() => {
     deleteExpired.run(cutoff);
 
-    const { count } = countEvents.get(ipHash, cutoff) as { count: number };
+    const { count } = countEvents.get(ipHash, cutoffIpHash, cutoff) as { count: number };
     if (count >= maxRequests) return false;
 
     insertEvent.run(ipHash, now);
