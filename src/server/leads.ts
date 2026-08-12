@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { getDatabase } from './database';
+import { createLeadFingerprint } from './lead-fingerprint';
 import type { LeadInput } from './lead-schema';
 
 export type NotificationStatus = 'pending' | 'sent' | 'failed';
@@ -7,6 +8,7 @@ export type NotificationStatus = 'pending' | 'sent' | 'failed';
 export interface LeadRecord {
   id: string;
   request_token: string | null;
+  request_fingerprint: string | null;
   created_at: string;
   name: string;
   preferred_contact: string;
@@ -26,6 +28,14 @@ export interface SavedLead {
 interface LeadIdentityRow {
   id: string;
   created_at: string;
+  request_fingerprint: string | null;
+}
+
+export class IdempotencyConflictError extends Error {
+  constructor() {
+    super('Request token is already bound to different lead content');
+    this.name = 'IdempotencyConflictError';
+  }
 }
 
 function findByRequestToken(
@@ -33,11 +43,12 @@ function findByRequestToken(
   requestToken: string,
 ): LeadIdentityRow | undefined {
   return database
-    .prepare('SELECT id, created_at FROM leads WHERE request_token = ?')
+    .prepare('SELECT id, created_at, request_fingerprint FROM leads WHERE request_token = ?')
     .get(requestToken) as LeadIdentityRow | undefined;
 }
 
-function duplicateLead(row: LeadIdentityRow): SavedLead {
+function duplicateLead(row: LeadIdentityRow, fingerprint: string): SavedLead {
+  if (row.request_fingerprint !== fingerprint) throw new IdempotencyConflictError();
   return { id: row.id, createdAt: row.created_at, duplicate: true };
 }
 
@@ -50,9 +61,12 @@ function isUniqueConstraint(error: unknown): boolean {
   );
 }
 
-export function getLeadByRequestToken(requestToken: string): SavedLead | undefined {
+export function getLeadByRequestToken(
+  requestToken: string,
+  fingerprint: string,
+): SavedLead | undefined {
   const row = findByRequestToken(getDatabase(), requestToken);
-  return row ? duplicateLead(row) : undefined;
+  return row ? duplicateLead(row, fingerprint) : undefined;
 }
 
 export function saveLead(input: LeadInput): SavedLead {
@@ -60,6 +74,7 @@ export function saveLead(input: LeadInput): SavedLead {
   const id = randomUUID();
   const nowMs = Date.now();
   const createdAt = new Date(nowMs).toISOString();
+  const fingerprint = createLeadFingerprint(input);
   const attribution = JSON.stringify({
     source: input.utmSource,
     medium: input.utmMedium,
@@ -72,6 +87,7 @@ export function saveLead(input: LeadInput): SavedLead {
     INSERT INTO leads (
       id,
       request_token,
+      request_fingerprint,
       created_at,
       name,
       preferred_contact,
@@ -79,17 +95,18 @@ export function saveLead(input: LeadInput): SavedLead {
       consent_version,
       consent_at,
       utm_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertLead = database.transaction((): SavedLead => {
     if (input.requestToken) {
       const existing = findByRequestToken(database, input.requestToken);
-      if (existing) return duplicateLead(existing);
+      if (existing) return duplicateLead(existing, fingerprint);
     }
 
     insert.run(
       id,
       input.requestToken ?? null,
+      fingerprint,
       createdAt,
       input.name,
       input.preferredContact,
@@ -105,12 +122,8 @@ export function saveLead(input: LeadInput): SavedLead {
     return insertLead.immediate();
   } catch (error) {
     if (input.requestToken && isUniqueConstraint(error)) {
-      try {
-        const existing = findByRequestToken(database, input.requestToken);
-        if (existing) return duplicateLead(existing);
-      } catch {
-        // Preserve the original storage failure when race recovery cannot read.
-      }
+      const existing = findByRequestToken(database, input.requestToken);
+      if (existing) return duplicateLead(existing, fingerprint);
     }
 
     throw error;

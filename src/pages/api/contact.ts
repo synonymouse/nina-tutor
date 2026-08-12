@@ -7,11 +7,13 @@ import {
 } from '../../server/lead-schema';
 import {
   getLeadByRequestToken,
+  IdempotencyConflictError,
   saveLead,
   setNotificationStatus,
 } from '../../server/leads';
 import { notifyLead } from '../../server/notify';
 import { consumeRateLimit } from '../../server/rate-limit';
+import { createLeadFingerprint } from '../../server/lead-fingerprint';
 
 export const prerender = false;
 
@@ -24,6 +26,9 @@ const validationMessages: Record<string, string> = {
   website: 'Не удалось проверить данные формы.',
   requestToken: 'Обновите страницу и попробуйте отправить заявку еще раз.',
 };
+
+const idempotencyConflictMessage =
+  'Данные формы изменились после первой отправки. Обновите страницу или начните новую заявку.';
 
 function methodNotAllowed(request: Request): Response {
   const response = errorResponse(
@@ -131,9 +136,13 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (parsed.data.requestToken) {
     try {
-      const existingLead = getLeadByRequestToken(parsed.data.requestToken);
+      const fingerprint = createLeadFingerprint(parsed.data);
+      const existingLead = getLeadByRequestToken(parsed.data.requestToken, fingerprint);
       if (existingLead) return successResponse(json, existingLead.id);
-    } catch {
+    } catch (error) {
+      if (error instanceof IdempotencyConflictError) {
+        return errorResponse(json, 409, idempotencyConflictMessage);
+      }
       console.error('lead_storage_failed');
       return errorResponse(json, 503, 'Не удалось сохранить заявку. Попробуйте позже.');
     }
@@ -158,7 +167,10 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     lead = saveLead(parsed.data);
-  } catch {
+  } catch (error) {
+    if (error instanceof IdempotencyConflictError) {
+      return errorResponse(json, 409, idempotencyConflictMessage);
+    }
     console.error('lead_storage_failed');
     return errorResponse(json, 503, 'Не удалось сохранить заявку. Попробуйте позже.');
   }

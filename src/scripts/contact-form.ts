@@ -18,6 +18,7 @@ if (form && form.dataset.contactFormBound !== 'true') {
   } as const;
   const confirmedTokens = new Set<string>();
   let submitting = false;
+  let uncertain = false;
 
   function createRequestToken(): string {
     if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -31,6 +32,22 @@ if (form && form.dataset.contactFormBound !== 'true') {
 
   function setRequestToken() {
     if (requestToken) requestToken.value = createRequestToken();
+  }
+
+  function handleUserEdit(target: EventTarget | null) {
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
+
+    clearFieldError(target);
+    if (!uncertain || !['name', 'preferredContact', 'situation', 'consent'].includes(target.name)) {
+      return;
+    }
+
+    setRequestToken();
+    uncertain = false;
+    hideSummary();
+    if (status) {
+      status.textContent = 'Вы изменили данные. Повторная отправка создаст новую заявку.';
+    }
   }
 
   function setStartedAt() {
@@ -135,10 +152,9 @@ if (form && form.dataset.contactFormBound !== 'true') {
   setRequestToken();
 
   contactForm.addEventListener('input', (event) => {
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
-      clearFieldError(event.target);
-    }
+    handleUserEdit(event.target);
   });
+  contactForm.addEventListener('change', (event) => handleUserEdit(event.target));
 
   contactForm.addEventListener(
     'invalid',
@@ -202,6 +218,20 @@ if (form && form.dataset.contactFormBound !== 'true') {
         typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : null;
 
       if (!response.ok) {
+        if (response.status === 409) {
+          setRequestToken();
+          uncertain = false;
+          const conflictMessage =
+            typeof result?.message === 'string' && result.message.length <= 300
+              ? result.message
+              : 'Данные формы изменились после первой отправки. Начните новую заявку.';
+          showSummary(conflictMessage, true);
+          if (status) {
+            status.textContent =
+              'Данные сохранены в форме. Повторите отправку, чтобы создать новую заявку.';
+          }
+          return;
+        }
         if (typeof result?.fields === 'object' && result.fields !== null) {
           showFieldErrors(result.fields as Record<string, unknown>);
         }
@@ -227,6 +257,7 @@ if (form && form.dataset.contactFormBound !== 'true') {
       }
 
       contactForm.reset();
+      uncertain = false;
       setStartedAt();
       setRequestToken();
       hideSummary();
@@ -237,11 +268,13 @@ if (form && form.dataset.contactFormBound !== 'true') {
       }
     } catch {
       if (timedOut) {
+        uncertain = true;
         const message =
           'Не удалось дождаться подтверждения. Заявка могла сохраниться — повторная отправка с этой страницы безопасна.';
         showSummary(message, true);
         if (status) status.textContent = message;
       } else {
+        uncertain = true;
         showSummary('Не удалось получить ответ сервера.', true);
         if (status) {
           status.textContent =
