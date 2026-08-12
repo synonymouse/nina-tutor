@@ -13,7 +13,18 @@ const booleanString = z.preprocess((value) => {
   return value;
 }, z.boolean());
 
+const siteOrigin = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim() : value),
+  z
+    .url()
+    .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), {
+      message: 'SITE_URL must use http or https',
+    })
+    .transform((value) => new URL(value).origin),
+);
+
 const serverConfigSchema = z.object({
+  SITE_URL: siteOrigin,
   LEADS_DB_PATH: z.string().trim().min(1).default('./var/leads.db'),
   LEAD_NOTIFICATION_EMAIL: z.email(),
   // Timeweb must overwrite this header and prevent clients from supplying it directly.
@@ -42,7 +53,10 @@ export type TrustedProxyHeader = ServerConfig['TRUSTED_PROXY_HEADER'];
 let cachedConfig: ServerConfig | undefined;
 
 export function getServerConfig(): ServerConfig {
-  cachedConfig ??= serverConfigSchema.parse(process.env);
+  const siteUrl =
+    process.env.SITE_URL ??
+    (process.env.NODE_ENV === 'production' ? undefined : 'http://localhost:4321');
+  cachedConfig ??= serverConfigSchema.parse({ ...process.env, SITE_URL: siteUrl });
   return cachedConfig;
 }
 

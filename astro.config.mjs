@@ -14,5 +14,7 @@ export default defineConfig({
       filter: (page) => !excludedSitemapPaths.some((path) => page.endsWith(path)),
     }),
   ],
+  // The contact route validates Origin against runtime SITE_URL behind the TLS proxy.
+  security: { checkOrigin: false },
   server: { host: true },
 });

@@ -10,6 +10,10 @@ const leadRetentionMs = 365 * 24 * 60 * 60 * 1000;
 const rateEventRetentionMs = 10 * 60 * 1000;
 const maintenanceIntervalMs = 6 * 60 * 60 * 1000;
 
+interface TableInfoRow {
+  name: string;
+}
+
 function cleanupExpiredDataIn(openedDatabase: Database.Database, now: number): void {
   const cleanup = openedDatabase.transaction(() => {
     openedDatabase
@@ -51,28 +55,42 @@ export function getDatabase(): Database.Database {
     openedDatabase.pragma('journal_mode = WAL');
     openedDatabase.pragma('foreign_keys = ON');
     openedDatabase.pragma('busy_timeout = 5000');
-    openedDatabase.exec(`
-      CREATE TABLE IF NOT EXISTS leads (
-        id TEXT PRIMARY KEY,
-        created_at TEXT NOT NULL,
-        name TEXT NOT NULL,
-        preferred_contact TEXT NOT NULL,
-        situation TEXT NOT NULL,
-        consent_version TEXT NOT NULL,
-        consent_at TEXT NOT NULL,
-        utm_json TEXT NOT NULL,
-        notification_status TEXT NOT NULL DEFAULT 'pending'
-          CHECK (notification_status IN ('pending', 'sent', 'failed'))
-      );
+    const initializeSchema = openedDatabase.transaction(() => {
+      openedDatabase.exec(`
+        CREATE TABLE IF NOT EXISTS leads (
+          id TEXT PRIMARY KEY,
+          request_token TEXT UNIQUE,
+          created_at TEXT NOT NULL,
+          name TEXT NOT NULL,
+          preferred_contact TEXT NOT NULL,
+          situation TEXT NOT NULL,
+          consent_version TEXT NOT NULL,
+          consent_at TEXT NOT NULL,
+          utm_json TEXT NOT NULL,
+          notification_status TEXT NOT NULL DEFAULT 'pending'
+            CHECK (notification_status IN ('pending', 'sent', 'failed'))
+        );
 
-      CREATE TABLE IF NOT EXISTS rate_events (
-        ip_hash TEXT NOT NULL,
-        created_at INTEGER NOT NULL
-      );
+        CREATE TABLE IF NOT EXISTS rate_events (
+          ip_hash TEXT NOT NULL,
+          created_at INTEGER NOT NULL
+        );
+      `);
 
-      CREATE INDEX IF NOT EXISTS rate_events_lookup
-        ON rate_events(ip_hash, created_at);
-    `);
+      const leadColumns = openedDatabase.pragma('table_info(leads)') as TableInfoRow[];
+      if (!leadColumns.some((column) => column.name === 'request_token')) {
+        openedDatabase.exec('ALTER TABLE leads ADD COLUMN request_token TEXT');
+      }
+
+      openedDatabase.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS leads_request_token_unique
+          ON leads(request_token) WHERE request_token IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS rate_events_lookup
+          ON rate_events(ip_hash, created_at);
+      `);
+    });
+
+    initializeSchema.immediate();
     cleanupExpiredDataIn(openedDatabase, Date.now());
   } catch (error) {
     openedDatabase.close();

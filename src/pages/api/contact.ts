@@ -5,7 +5,11 @@ import {
   parseLeadRequest,
   UnsupportedMediaTypeError,
 } from '../../server/lead-schema';
-import { saveLead, setNotificationStatus } from '../../server/leads';
+import {
+  getLeadByRequestToken,
+  saveLead,
+  setNotificationStatus,
+} from '../../server/leads';
 import { notifyLead } from '../../server/notify';
 import { consumeRateLimit } from '../../server/rate-limit';
 
@@ -18,6 +22,7 @@ const validationMessages: Record<string, string> = {
   consent: 'Подтвердите отдельное согласие на обработку персональных данных.',
   consentVersion: 'Обновите страницу и подтвердите согласие еще раз.',
   website: 'Не удалось проверить данные формы.',
+  requestToken: 'Обновите страницу и попробуйте отправить заявку еще раз.',
 };
 
 function methodNotAllowed(request: Request): Response {
@@ -30,12 +35,12 @@ function methodNotAllowed(request: Request): Response {
   return response;
 }
 
-function isSameOriginRequest(request: Request, json: boolean): boolean {
+function isSameOriginRequest(request: Request, json: boolean, siteOrigin: string): boolean {
   const origin = request.headers.get('origin');
 
   if (origin) {
     try {
-      if (new URL(origin).origin !== new URL(request.url).origin) return false;
+      if (new URL(origin).origin !== siteOrigin) return false;
     } catch {
       return false;
     }
@@ -47,22 +52,39 @@ function isSameOriginRequest(request: Request, json: boolean): boolean {
   return !fetchSite || fetchSite === 'same-origin' || fetchSite === 'none';
 }
 
-export const POST: APIRoute = async ({ request }) => {
-  const json = wantsJson(request);
-
-  if (!isSameOriginRequest(request, json)) {
-    return errorResponse(json, 403, 'Не удалось подтвердить источник запроса.');
+function successResponse(json: boolean, requestId: string): Response {
+  if (json) {
+    return Response.json(
+      { ok: true, requestId },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
   }
 
-  let clientIp: string | null;
+  return new Response(null, {
+    status: 303,
+    headers: {
+      'Cache-Control': 'no-store',
+      Location: '/thanks/',
+    },
+  });
+}
+
+export const POST: APIRoute = async ({ request }) => {
+  const json = wantsJson(request);
+  let config: ReturnType<typeof getServerConfig>;
 
   try {
-    const config = getServerConfig();
-    clientIp = getClientIp(request.headers, config.TRUSTED_PROXY_HEADER);
+    config = getServerConfig();
   } catch {
     console.error('server_config_failed');
     return errorResponse(json, 503, 'Не удалось проверить запрос. Попробуйте позже.');
   }
+
+  if (!isSameOriginRequest(request, json, new URL(config.SITE_URL).origin)) {
+    return errorResponse(json, 403, 'Не удалось подтвердить источник запроса.');
+  }
+
+  let clientIp = getClientIp(request.headers, config.TRUSTED_PROXY_HEADER);
 
   if (!clientIp) {
     if (process.env.NODE_ENV === 'production') {
@@ -70,21 +92,6 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     clientIp = '127.0.0.1';
-  }
-
-  try {
-    if (!consumeRateLimit(clientIp)) {
-      const response = errorResponse(
-        json,
-        429,
-        'Слишком много попыток. Попробуйте отправить заявку через 10 минут.',
-      );
-      response.headers.set('Retry-After', '600');
-      return response;
-    }
-  } catch {
-    console.error('rate_limit_failed');
-    return errorResponse(json, 503, 'Не удалось проверить запрос. Попробуйте позже.');
   }
 
   let parsed: Awaited<ReturnType<typeof parseLeadRequest>>;
@@ -122,6 +129,31 @@ export const POST: APIRoute = async ({ request }) => {
     return errorResponse(json, 400, 'Пожалуйста, заполните форму чуть внимательнее.');
   }
 
+  if (parsed.data.requestToken) {
+    try {
+      const existingLead = getLeadByRequestToken(parsed.data.requestToken);
+      if (existingLead) return successResponse(json, existingLead.id);
+    } catch {
+      console.error('lead_storage_failed');
+      return errorResponse(json, 503, 'Не удалось сохранить заявку. Попробуйте позже.');
+    }
+  }
+
+  try {
+    if (!consumeRateLimit(clientIp)) {
+      const response = errorResponse(
+        json,
+        429,
+        'Слишком много попыток. Попробуйте отправить заявку через 10 минут.',
+      );
+      response.headers.set('Retry-After', '600');
+      return response;
+    }
+  } catch {
+    console.error('rate_limit_failed');
+    return errorResponse(json, 503, 'Не удалось проверить запрос. Попробуйте позже.');
+  }
+
   let lead: ReturnType<typeof saveLead>;
 
   try {
@@ -131,12 +163,24 @@ export const POST: APIRoute = async ({ request }) => {
     return errorResponse(json, 503, 'Не удалось сохранить заявку. Попробуйте позже.');
   }
 
+  if (lead.duplicate) return successResponse(json, lead.id);
+
+  let notificationSent = false;
+
   try {
     await notifyLead(lead.id, parsed.data);
-    setNotificationStatus(lead.id, 'sent');
+    notificationSent = true;
   } catch {
     console.error('lead_notification_failed', lead.id);
+  }
 
+  if (notificationSent) {
+    try {
+      setNotificationStatus(lead.id, 'sent');
+    } catch {
+      console.error('lead_notification_status_failed', lead.id);
+    }
+  } else {
     try {
       setNotificationStatus(lead.id, 'failed');
     } catch {
@@ -144,20 +188,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
   }
 
-  if (json) {
-    return Response.json(
-      { ok: true, requestId: lead.id },
-      { headers: { 'Cache-Control': 'no-store' } },
-    );
-  }
-
-  return new Response(null, {
-    status: 303,
-    headers: {
-      'Cache-Control': 'no-store',
-      Location: '/thanks/',
-    },
-  });
+  return successResponse(json, lead.id);
 };
 
 export const ALL: APIRoute = ({ request }) => methodNotAllowed(request);

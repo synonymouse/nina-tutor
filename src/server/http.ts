@@ -89,6 +89,17 @@ function escapeHtml(value: string): string {
   });
 }
 
+const fieldLabels: Record<string, string> = {
+  name: 'Ваше имя',
+  preferredContact: 'Удобный контакт',
+  situation: 'Описание ситуации',
+  consent: 'Согласие',
+  consentVersion: 'Версия согласия',
+  website: 'Проверка формы',
+  startedAt: 'Время заполнения',
+  requestToken: 'Идентификатор заявки',
+};
+
 export function errorResponse(
   json: boolean,
   status: number,
@@ -105,7 +116,7 @@ export function errorResponse(
     ? `<ul>${Object.entries(fields)
         .map(
           ([field, fieldMessage]) =>
-            `<li><strong>${escapeHtml(field)}:</strong> ${escapeHtml(fieldMessage)}</li>`,
+            `<li><strong>${escapeHtml(fieldLabels[field] ?? 'Поле формы')}:</strong> ${escapeHtml(fieldMessage)}</li>`,
         )
         .join('')}</ul>`
     : '';

@@ -1124,6 +1124,14 @@
   line-height: 1.45;
 }
 
+.contact-form__error {
+  display: block;
+  margin: calc(var(--space-2) * -1) 0 var(--space-2);
+  color: var(--berry);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
 .consent-check {
   display: grid;
   grid-template-columns: 1.35rem minmax(0, 1fr);
