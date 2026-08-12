@@ -7,7 +7,7 @@ import { process } from '../content/site';
     <p class="eyebrow">Как мы будем работать</p>
     <h2 class="process__title" id="process-title">Сначала понять. <em>Потом менять.</em></h2>
 
-    <ol class="process__list">
+    <ol class="process__list" role="list">
       {
         process.map(([number, title, text], index) => (
           <li class:list={['process__item', { process__final: index === process.length - 1 }]}>

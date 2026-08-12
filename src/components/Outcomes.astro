@@ -10,7 +10,7 @@ import { childOutcomes, parentOutcomes } from '../content/site';
     <div class="outcomes__grid">
       <article class="outcomes__panel outcomes__panel--child">
         <h3>Для ребенка</h3>
-        <ul class="outcomes__list outcomes__list--child">
+        <ul class="outcomes__list outcomes__list--child" role="list">
           {
             childOutcomes.map(([title, text]) => (
               <li>
@@ -24,7 +24,7 @@ import { childOutcomes, parentOutcomes } from '../content/site';
 
       <article class="outcomes__panel outcomes__panel--parents">
         <h3>Для родителей</h3>
-        <ul class="outcomes__list outcomes__list--parents">
+        <ul class="outcomes__list outcomes__list--parents" role="list">
           {parentOutcomes.map((outcome) => <li>{outcome}</li>)}
         </ul>
       </article>

@@ -736,6 +736,17 @@
   box-shadow: var(--shadow-hard);
 }
 
+@media (min-width: 761px) and (max-width: 900px) {
+  .about__grid,
+  .about__qualifications {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .about__grid {
+    gap: var(--space-7);
+  }
+}
+
 @media (max-width: 760px) {
   .recognition__title,
   .approach__title,
