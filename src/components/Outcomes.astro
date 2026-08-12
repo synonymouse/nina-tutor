@@ -1,0 +1,33 @@
+---
+import { childOutcomes, parentOutcomes } from '../content/site';
+---
+
+<section class="section outcomes" aria-labelledby="outcomes-title">
+  <div class="shell">
+    <p class="eyebrow">Что изменится</p>
+    <h2 class="outcomes__title" id="outcomes-title">Не просто «лучше учится».</h2>
+
+    <div class="outcomes__grid">
+      <article class="outcomes__panel outcomes__panel--child">
+        <h3>Для ребенка</h3>
+        <ul class="outcomes__list outcomes__list--child">
+          {
+            childOutcomes.map(([title, text]) => (
+              <li>
+                <strong>{title}</strong>
+                <span>{text}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </article>
+
+      <article class="outcomes__panel outcomes__panel--parents">
+        <h3>Для родителей</h3>
+        <ul class="outcomes__list outcomes__list--parents">
+          {parentOutcomes.map((outcome) => <li>{outcome}</li>)}
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>

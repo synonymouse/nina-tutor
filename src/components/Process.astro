@@ -1,0 +1,24 @@
+---
+import { process } from '../content/site';
+---
+
+<section class="section process" aria-labelledby="process-title">
+  <div class="shell">
+    <p class="eyebrow">Как мы будем работать</p>
+    <h2 class="process__title" id="process-title">Сначала понять. <em>Потом менять.</em></h2>
+
+    <ol class="process__list">
+      {
+        process.map(([number, title, text], index) => (
+          <li class:list={['process__item', { process__final: index === process.length - 1 }]}>
+            <span class="process__number" aria-hidden="true">{number}</span>
+            <div class="process__copy">
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>

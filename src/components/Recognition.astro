@@ -1,0 +1,33 @@
+---
+import { problems } from '../content/site';
+---
+
+<section class="section recognition" aria-labelledby="recognition-title">
+  <div class="shell">
+    <p class="eyebrow">Узнаете себя?</p>
+    <h2 class="recognition__title" id="recognition-title">
+      Возможно, дело <em>не в лени.</em>
+    </h2>
+
+    <div class="recognition__grid">
+      {
+        problems.map((problem, index) => (
+          <article class="recognition__item">
+            <span class="recognition__number" aria-hidden="true">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <div>
+              <h3>{problem.quote}</h3>
+              <p>{problem.text}</p>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <p class="recognition__closing">
+      Часто за трудностями стоят навыки и причины, которые ребенок пока не умеет самостоятельно
+      распознавать и регулировать.
+    </p>
+  </div>
+</section>

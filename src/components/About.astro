@@ -1,0 +1,40 @@
+---
+import { qualifications } from '../content/site';
+---
+
+<section class="section about" id="about" aria-labelledby="about-title">
+  <div class="shell">
+    <p class="eyebrow">Обо мне</p>
+    <h2 class="about__title" id="about-title">Нина Дьяченко. <em>8 лет в образовании.</em></h2>
+
+    <div class="about__grid">
+      <div class="about__story">
+        <p class="about__lead">Я работаю не ради пятерок, а ради самостоятельности ребенка.</p>
+        <p>
+          Специализируюсь на образовательном наставничестве для детей и подростков 7–16 лет.
+          Вместо универсальной программы выстраиваю индивидуальный маршрут вокруг запроса,
+          сильных сторон и темпа ребенка.
+        </p>
+        <p class="about__experience">
+          В профессиональном опыте также — подростковый подкаст о психологии, книжный клуб для
+          развития критического мышления и работа вожатой.
+        </p>
+        <p class="about__boutique">
+          Работаю с ограниченным числом семей, чтобы сохранять внимание к каждому ребенку и его
+          маршруту.
+        </p>
+      </div>
+
+      <div class="about__qualifications">
+        {
+          qualifications.map(([title, text]) => (
+            <article class="about__qualification">
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</section>

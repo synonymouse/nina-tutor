@@ -1,0 +1,29 @@
+---
+import { dimensions } from '../content/site';
+---
+
+<section class="section approach" id="approach" aria-labelledby="approach-title">
+  <div class="shell">
+    <p class="eyebrow">Моя задача</p>
+    <h2 class="approach__title" id="approach-title">
+      Не заставить ребенка учиться. <em>А научить управлять собственной учебой.</em>
+    </h2>
+    <p class="approach__lead">
+      Не искать ответ на вопрос «Как заставить?», а разобраться: «Почему ему сейчас сложно
+      справляться самостоятельно?»
+    </p>
+
+    <div class="approach__grid">
+      {
+        dimensions.map(([title, text]) => (
+          <article class="approach__dimension">
+            <h3>{title}</h3>
+            <p>{text}</p>
+          </article>
+        ))
+      }
+    </div>
+
+    <p class="approach__closing">Моя цель — постепенно стать ему не нужна.</p>
+  </div>
+</section>
