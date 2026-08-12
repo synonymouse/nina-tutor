@@ -8,6 +8,15 @@ type IdleWindow = Window & {
   requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
 };
 
+const approvedGoals = [
+  'contact_open',
+  'telegram_click',
+  'whatsapp_click',
+  'form_success',
+] as const;
+type Goal = (typeof approvedGoals)[number];
+const approvedGoalSet = new Set<string>(approvedGoals);
+
 declare global {
   interface Window {
     ym?: Ym;
@@ -42,6 +51,10 @@ function writeConsent(value: Consent) {
   } catch {
     // Keep the choice in memory when storage is unavailable.
   }
+}
+
+function isApprovedGoal(value: unknown): value is Goal {
+  return typeof value === 'string' && approvedGoalSet.has(value);
 }
 
 function createYmQueue(): Ym {
@@ -79,7 +92,6 @@ function loadMetrica() {
     accurateTrackBounce: true,
     webvisor: false,
   });
-
 }
 
 function scheduleMetrica() {
@@ -138,6 +150,7 @@ if (!enabled) {
   declineButton?.addEventListener('click', () => setConsent('declined'));
 
   document.querySelectorAll<HTMLElement>('[data-open-cookie-settings]').forEach((control) => {
+    control.hidden = false;
     control.addEventListener('click', () => {
       settingsTrigger = control;
       openSettings(true);
@@ -145,7 +158,7 @@ if (!enabled) {
   });
 
   window.addEventListener('nina:goal', (event) => {
-    if (!metricaStarted || !(event instanceof CustomEvent) || typeof event.detail !== 'string') {
+    if (!metricaStarted || !(event instanceof CustomEvent) || !isApprovedGoal(event.detail)) {
       return;
     }
 
@@ -158,7 +171,9 @@ if (!enabled) {
     element.dataset.analyticsGoalBound = 'true';
     element.addEventListener('click', () => {
       const goal = element.dataset.goal;
-      if (goal) window.dispatchEvent(new CustomEvent('nina:goal', { detail: goal }));
+      if (isApprovedGoal(goal)) {
+        window.dispatchEvent(new CustomEvent('nina:goal', { detail: goal }));
+      }
     });
   });
 }
