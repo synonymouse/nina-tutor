@@ -13,7 +13,7 @@
     "start": "node scripts/validate-env.mjs && node dist/server/entry.mjs",
     "preview": "node dist/server/entry.mjs",
     "test": "vitest run",
-    "test:e2e": "SITE_URL=http://127.0.0.1:4321 PUBLIC_YANDEX_METRICA_ID=123456 npm run build && playwright test"
+    "test:e2e": "sh scripts/test-e2e.sh"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.1",

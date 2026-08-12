@@ -15,8 +15,10 @@ async function fillContactForm(page: Page): Promise<void> {
 }
 
 test('validates consent, sends bounded attribution, confirms, and resets', async ({ page }) => {
+  let requestCount = 0;
   let requestPayload: Record<string, unknown> | undefined;
   await page.route('**/api/contact', async (route) => {
+    requestCount += 1;
     requestPayload = route.request().postDataJSON() as Record<string, unknown>;
     await route.fulfill({
       status: 200,
@@ -44,11 +46,13 @@ test('validates consent, sends bounded attribution, confirms, and resets', async
     'подтвердите отдельное согласие',
   );
   expect(await checkbox.evaluate((control: HTMLInputElement) => control.checkValidity())).toBe(false);
+  expect(requestCount).toBe(0);
 
   await checkbox.check();
   await form.getByRole('button', { name: 'Отправить заявку' }).click();
   await expect(form.locator('[data-form-status]')).toContainText('test-request-1');
 
+  expect(requestCount).toBe(1);
   expect(requestPayload).toBeDefined();
   const payload = requestPayload ?? {};
   expect(Object.keys(payload).sort()).toEqual(

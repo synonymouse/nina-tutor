@@ -18,6 +18,15 @@ import { resetTransportForTests } from '../../src/server/notify';
 
 let temporaryDirectory: string;
 let databasePath: string;
+const originalLeadsDatabasePath = process.env.LEADS_DB_PATH;
+
+function restoreLeadsDatabasePath(): void {
+  if (originalLeadsDatabasePath === undefined) {
+    delete process.env.LEADS_DB_PATH;
+  } else {
+    process.env.LEADS_DB_PATH = originalLeadsDatabasePath;
+  }
+}
 
 const lead = (overrides: Partial<LeadInput> = {}): LeadInput => ({
   name: 'Анна',
@@ -47,6 +56,7 @@ afterEach(() => {
   closeDatabase();
   resetTransportForTests();
   resetServerConfigForTests();
+  restoreLeadsDatabasePath();
   rmSync(temporaryDirectory, { force: true, recursive: true });
 });
 

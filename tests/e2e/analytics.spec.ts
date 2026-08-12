@@ -73,6 +73,19 @@ test('loads after acceptance and forwards only approved goals', async ({ context
   await page.getByRole('button', { name: 'Разрешить' }).click();
   await expect.poll(() => requests.length).toBe(1);
   await expect.poll(() => hasYmCall(page, 'init')).toBe(true);
+  const initCall = await page.evaluate(() =>
+    (window.__ymCalls ?? []).find((call) => call[1] === 'init'),
+  );
+  expect(initCall).toEqual([
+    123456,
+    'init',
+    {
+      clickmap: false,
+      trackLinks: false,
+      accurateTrackBounce: true,
+      webvisor: false,
+    },
+  ]);
 
   await page.evaluate(() => {
     window.dispatchEvent(new CustomEvent('nina:goal', { detail: 'contact_open' }));
@@ -80,12 +93,11 @@ test('loads after acceptance and forwards only approved goals', async ({ context
   });
   await expect.poll(() => hasYmCall(page, 'reachGoal', 'contact_open')).toBe(true);
 
-  const goals = await page.evaluate(() =>
+  const goalCalls = await page.evaluate(() =>
     (window.__ymCalls ?? [])
       .filter((call) => call[1] === 'reachGoal')
-      .map((call) => call[2]),
   );
-  expect(goals).toEqual(['contact_open']);
+  expect(goalCalls).toEqual([[123456, 'reachGoal', 'contact_open']]);
 });
 
 test('synchronizes cross-tab decline, tears down, and blocks later goals', async ({

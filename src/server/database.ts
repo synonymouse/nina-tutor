@@ -10,6 +10,8 @@ let maintenanceTimer: ReturnType<typeof setInterval> | undefined;
 const leadRetentionMs = 365 * 24 * 60 * 60 * 1000;
 const rateEventRetentionMs = 10 * 60 * 1000;
 const maintenanceIntervalMs = 6 * 60 * 60 * 1000;
+const databaseBusyTimeoutMs = 5_000;
+const journalModeRetryMs = 10;
 
 interface TableInfoRow {
   name: string;
@@ -53,6 +55,31 @@ function cleanupExpiredDataIn(openedDatabase: Database.Database, now: number): v
   cleanup.immediate();
 }
 
+function isDatabaseBusy(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'SQLITE_BUSY'
+  );
+}
+
+function enableWal(openedDatabase: Database.Database): void {
+  const deadline = Date.now() + databaseBusyTimeoutMs;
+  const retrySignal = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+
+  // WAL activation can return SQLITE_BUSY before SQLite applies its busy handler.
+  while (true) {
+    try {
+      openedDatabase.pragma('journal_mode = WAL');
+      return;
+    } catch (error) {
+      if (!isDatabaseBusy(error) || Date.now() >= deadline) throw error;
+      Atomics.wait(retrySignal, 0, 0, journalModeRetryMs);
+    }
+  }
+}
+
 function scheduleMaintenance(): void {
   if (maintenanceTimer) return;
 
@@ -78,9 +105,9 @@ export function getDatabase(): Database.Database {
   const openedDatabase = new Database(path);
 
   try {
-    openedDatabase.pragma('journal_mode = WAL');
+    openedDatabase.pragma(`busy_timeout = ${databaseBusyTimeoutMs}`);
+    enableWal(openedDatabase);
     openedDatabase.pragma('foreign_keys = ON');
-    openedDatabase.pragma('busy_timeout = 5000');
     const initializeSchema = openedDatabase.transaction(() => {
       openedDatabase.exec(`
         CREATE TABLE IF NOT EXISTS leads (

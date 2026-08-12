@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
 import { declineAnalytics } from './helpers';
 
 const prices = [
@@ -92,12 +92,22 @@ test('opens the contact dialog and restores trigger focus on Escape', async ({ p
   await expect(trigger).toBeFocused();
 });
 
-test('keeps essential navigation and form constraints without JavaScript', async ({ browser }) => {
+test('keeps essential mobile navigation and form constraints without JavaScript', async (
+  { browser },
+  testInfo,
+) => {
+  test.skip(testInfo.project.name !== 'mobile', 'The no-JavaScript contract runs in a mobile context.');
+
+  const mobile = devices['iPhone 13'];
   const context = await browser.newContext({
-    baseURL: 'http://127.0.0.1:4321',
-    extraHTTPHeaders: { 'x-real-ip': '127.0.0.1' },
+    baseURL: process.env.E2E_BASE_URL,
+    deviceScaleFactor: mobile.deviceScaleFactor,
+    extraHTTPHeaders: { 'x-real-ip': '198.51.100.20' },
+    hasTouch: mobile.hasTouch,
+    isMobile: mobile.isMobile,
     javaScriptEnabled: false,
-    viewport: { width: 1280, height: 720 },
+    userAgent: mobile.userAgent,
+    viewport: mobile.viewport,
   });
 
   try {

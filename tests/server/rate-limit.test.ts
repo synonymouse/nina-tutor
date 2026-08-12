@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +9,17 @@ import { resetTransportForTests } from '../../src/server/notify';
 import { consumeRateLimit, hashClientIp } from '../../src/server/rate-limit';
 
 let temporaryDirectory: string;
+const rateLimitSecret = 'f091ce6abe8c4a05849f9638df59248d';
+const originalLeadsDatabasePath = process.env.LEADS_DB_PATH;
+const originalRateLimitSecret = process.env.RATE_LIMIT_SECRET;
+
+function restoreEnvironment(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+}
 
 beforeEach(() => {
   closeDatabase();
@@ -15,23 +27,32 @@ beforeEach(() => {
   resetServerConfigForTests();
   temporaryDirectory = mkdtempSync(join(tmpdir(), 'nina-rate-limit-test-'));
   process.env.LEADS_DB_PATH = join(temporaryDirectory, 'rate-limit.db');
-  process.env.RATE_LIMIT_SECRET = 'f091ce6abe8c4a05849f9638df59248d';
+  process.env.RATE_LIMIT_SECRET = rateLimitSecret;
 });
 
 afterEach(() => {
   closeDatabase();
   resetTransportForTests();
   resetServerConfigForTests();
+  restoreEnvironment('LEADS_DB_PATH', originalLeadsDatabasePath);
+  restoreEnvironment('RATE_LIMIT_SECRET', originalRateLimitSecret);
   rmSync(temporaryDirectory, { force: true, recursive: true });
 });
 
 describe('rate limiting', () => {
   it('HMACs the address without retaining the raw IP', () => {
     const ip = '203.0.113.12';
-    const hash = hashClientIp(ip, Date.parse('2026-08-13T12:00:00.000Z'));
+    const now = Date.now();
+    const day = new Date(now).toISOString().slice(0, 10);
+    const hash = hashClientIp(ip, now);
+    const expected = createHmac('sha256', rateLimitSecret)
+      .update(`${day}:${ip}`)
+      .digest('hex');
+    const nextDayHash = hashClientIp(ip, now + 24 * 60 * 60 * 1000);
 
-    expect(hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(hash).toBe(expected);
     expect(hash).not.toContain(ip);
+    expect(nextDayHash).not.toBe(hash);
   });
 
   it('allows the first five requests and rejects the sixth', () => {
