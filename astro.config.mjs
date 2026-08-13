@@ -14,7 +14,6 @@ export default defineConfig({
   site,
   ...(outDir ? { outDir } : {}),
   output: 'server',
-  build: { inlineStylesheets: 'always' },
   adapter: node({ mode: 'standalone', bodySizeLimit: 16 * 1024 }),
   integrations: [
     sitemap({
