@@ -8,6 +8,7 @@ dist
 .superpowers
 .worktrees
 docs
+tests
 playwright-report
 test-results
 reports

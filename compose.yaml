@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        SITE_URL: ${SITE_URL:?SITE_URL must be set in .env.production}
+        PUBLIC_YANDEX_METRICA_ID: ${PUBLIC_YANDEX_METRICA_ID:-}
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    ports:
+      - "127.0.0.1:4321:4321"
+    volumes:
+      - nina_data:/data
+    restart: unless-stopped
+
+volumes:
+  nina_data:

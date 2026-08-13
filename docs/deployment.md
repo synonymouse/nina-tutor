@@ -1,40 +1,29 @@
-# Развертывание в Timeweb Cloud
+# Развертывание на Timeweb Cloud Server
 
-## Приложение
+Для сайта нужен Cloud Server/VDS в российском регионе, а не Timeweb App Platform. Авторитетная SQLite-база, постоянный диск и системный cron требуют root-доступа и управляемого серверного окружения.
 
-1. Создайте в Timeweb Cloud приложение из репозитория и выберите сборку по корневому `Dockerfile` в российском регионе.
-2. Передайте аргумент сборки `SITE_URL=https://<финальный-домен>` без завершающего `/`. Аргумент обязателен: он встраивается в canonical URL и sitemap.
-3. При наличии согласованного счетчика передайте аргумент сборки `PUBLIC_YANDEX_METRICA_ID=<id>`. Если аргумент отсутствует или пуст, Метрика отключена. Изменение ID требует новой сборки.
-4. Укажите порт контейнера `4321`, включите HTTPS для финального домена и оставьте команду запуска из образа: `npm start`.
-5. Подключите постоянный том в `/data`. Данные не должны храниться только в файловой системе контейнера.
-6. Настройте проверку состояния `GET /api/health`: успешный ответ имеет статус `200` и тело `{"ok":true}`. В образе уже есть Docker healthcheck для этого адреса.
-7. После развертывания проверьте сжатие главной страницы и указанного в ее HTML хешированного CSS-файла:
+## Подготовка VDS
+
+1. Создайте VDS с актуальным Debian или Ubuntu в российском дата-центре Timeweb.
+2. Добавьте DNS-записи `A` и при наличии IPv6 `AAAA` финального домена на адрес VDS.
+3. Обновите систему, подключите официальные APT-репозитории Docker и Caddy, установите Docker Engine, Compose plugin и Caddy:
 
 ```bash
-curl -I -H 'Accept-Encoding: br,gzip' https://FINAL_DOMAIN/
-curl -I -H 'Accept-Encoding: br,gzip' https://FINAL_DOMAIN/_astro/HASH.css
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin caddy
+sudo systemctl enable --now docker caddy
 ```
 
-Оба ответа должны содержать `Content-Encoding: br` или `gzip` и желательно `Vary: Accept-Encoding`. Если сжатия нет, включите его на reverse proxy/CDN Timeweb до финального Lighthouse: локальный Node-сервер Astro standalone сам ответы не сжимает.
+4. Разрешите в firewall TCP-порты `80` и `443`, а `22` оставьте только для доверенного административного IP. Порт приложения `4321` наружу не открывайте.
+5. Разместите репозиторий, например, в `/opt/nina-tutor`, и выполняйте дальнейшие команды из этого каталога.
 
-Эквивалентная локальная сборка образа:
+## Конфигурация и запуск
 
-```bash
-docker build \
-  --build-arg SITE_URL=https://<финальный-домен> \
-  --build-arg PUBLIC_YANDEX_METRICA_ID=<id> \
-  -t nina-tutor:latest .
-```
-
-`PUBLIC_YANDEX_METRICA_ID` и соответствующую строку `--build-arg` можно удалить, чтобы отключить Метрику. Секреты нельзя передавать как аргументы сборки или записывать в образ.
-
-## Переменные среды
-
-Добавьте в настройках приложения все переменные из `.env.example`:
+Создайте `.env.production` из `.env.example`, установите права `600` и задайте все значения:
 
 ```dotenv
-SITE_URL=https://<финальный-домен>
-PUBLIC_YANDEX_METRICA_ID=<согласованный-id-или-пусто>
+SITE_URL=https://FINAL_DOMAIN
+PUBLIC_YANDEX_METRICA_ID=
 LEADS_DB_PATH=/data/leads.db
 LEADS_BACKUP_DIR=/data/backups
 LEAD_NOTIFICATION_EMAIL=<ящик-в-россии>
@@ -48,53 +37,128 @@ SMTP_SECURE=true
 RATE_LIMIT_SECRET=<случайный-секрет-не-короче-32-символов>
 ```
 
-Runtime-значение `SITE_URL` должно в точности совпадать с HTTPS origin из аргумента сборки. Для уведомлений используйте доменный ящик и SMTP, размещенные в России. Секрет можно создать командой `openssl rand -hex 32`; храните его только в секретах приложения Timeweb.
+`SITE_URL` должен быть финальным HTTPS origin без завершающего `/`; одно и то же значение используется при сборке и в runtime. Пустой `PUBLIC_YANDEX_METRICA_ID` отключает Метрику, изменение ID требует новой сборки. Используйте доменный ящик и SMTP, размещенные в России. `RATE_LIMIT_SECRET` можно создать командой `openssl rand -hex 32`. Секреты хранятся только в `.env.production` на VDS и не передаются как build args.
 
-До запуска подтвердите по документации или у поддержки Timeweb, какой заголовок содержит IP исходного клиента. `TRUSTED_PROXY_HEADER` допускает только `x-real-ip`, `cf-connecting-ip` или `x-forwarded-for`. Выбранный заголовок должен всегда перезаписываться доверенным прокси Timeweb, а прямой клиент не должен иметь возможности подменить его. Если для приложения это еще не подтверждено, запуск блокируется до проверки.
-
-Для ручного запуска уже собранного образа вне интерфейса Timeweb эквивалентны настройки:
+Проверьте и запустите Compose:
 
 ```bash
-docker run -d --name nina-tutor --restart unless-stopped \
-  -p 4321:4321 \
-  -v nina-tutor-data:/data \
-  --env-file .env.production \
-  nina-tutor:latest
+chmod 600 .env.production
+docker compose --env-file .env.production config
+docker compose --env-file .env.production build --pull
+docker compose --env-file .env.production up -d
+docker compose --env-file .env.production ps
 ```
 
-Файл `.env.production` не должен попадать в репозиторий или образ.
+`compose.yaml` передает в сборку только публичные `SITE_URL` и опциональный ID Метрики, загружает runtime-переменные из `.env.production`, публикует приложение только на `127.0.0.1:4321` и монтирует именованный том в `/data`. Образ запускается от пользователя `node`; новый именованный том получает подготовленные в образе права на `/data` и `/data/backups`.
+
+Именованный том сохраняется при `docker compose down` и повторном создании контейнера. Команда `docker compose down -v` удаляет базу и резервные копии: на рабочем сервере ее применять нельзя.
+
+Если вместо именованного тома нужен bind mount, сначала создайте каталог с UID/GID пользователя `node` из официального образа (`1000:1000`), затем замените volume в Compose:
+
+```bash
+sudo install -d -o 1000 -g 1000 /srv/nina-tutor/data /srv/nina-tutor/data/backups
+```
+
+Образ можно собирать на VDS приведенной командой или в CI с теми же публичными build args и публиковать в registry. Для CI-развертывания замените `build` на закрепленный `image` digest в серверной конфигурации; runtime-секреты в образ не включайте.
+
+## HTTPS, proxy и сжатие
+
+Укажите финальный домен в `/etc/caddy/Caddyfile`:
+
+```caddyfile
+FINAL_DOMAIN {
+  encode zstd gzip
+
+  reverse_proxy 127.0.0.1:4321 {
+    header_up X-Real-IP {remote_host}
+  }
+}
+```
+
+Проверьте конфигурацию и перезагрузите Caddy:
+
+```bash
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+Caddy получает сертификат автоматически, сжимает ответы и всегда перезаписывает входной `X-Real-IP` адресом непосредственного клиента. Поскольку контейнер доступен только через loopback, прямой клиент не может обойти proxy или подменить доверенный заголовок. Для приложения установлено `TRUSTED_PROXY_HEADER=x-real-ip`; перед запуском подтвердите это поведение фактическим запросом и журналом. Допустимые значения приложения: `x-real-ip`, `cf-connecting-ip`, `x-forwarded-for`.
+
+После HTTPS-развертывания найдите хешированный CSS в HTML и проверьте сжатие обоих ответов:
+
+```bash
+curl -I -H 'Accept-Encoding: br,gzip' https://FINAL_DOMAIN/
+CSS_PATH=$(curl -fsS https://FINAL_DOMAIN/ | grep -oE '/_astro/[^" ]+\.css' | head -n 1)
+test -n "$CSS_PATH"
+curl -I -H 'Accept-Encoding: br,gzip' "https://FINAL_DOMAIN${CSS_PATH}"
+```
+
+Главная и CSS должны возвращать `Content-Encoding: gzip` (или `br`, если proxy настроен на Brotli) и желательно `Vary: Accept-Encoding`. Astro standalone сам ответы не сжимает; при отсутствии заголовка исправьте proxy до финального Lighthouse.
+
+Проверка здоровья:
+
+```bash
+curl -fsS https://FINAL_DOMAIN/api/health
+```
+
+Ожидаются HTTP `200` и `{"ok":true}`.
 
 ## Резервные копии
 
-Создайте ежедневное задание Timeweb с рабочим каталогом `/app`, теми же runtime-переменными и подключенным томом `/data`:
+Backup запускается системным cron на VDS, а не планировщиком App Platform. Добавьте в root crontab ежедневный запуск из каталога проекта:
 
-```bash
-npm run backup
+```cron
+17 3 * * * cd /opt/nina-tutor && /usr/bin/flock -n /run/lock/nina-backup.lock /usr/bin/docker compose --env-file .env.production exec -T app npm run backup >> /var/log/nina-backup.log 2>&1
 ```
 
-Команда выполняет online backup SQLite в `/data/backups` и печатает только путь созданного файла. Скрипты и `package.json` включены в runtime-образ. Скрипт не удаляет старые копии: сроки хранения, шифрование и регулярную выгрузку копий за пределы приложения задает оператор согласно утвержденной политике. Каталог резервных копий нельзя размещать внутри `public`.
+Проверьте команду вручную до включения расписания:
 
-Восстановление выполняйте в окно обслуживания:
+```bash
+cd /opt/nina-tutor
+docker compose --env-file .env.production exec -T app npm run backup
+```
 
-1. Остановите приложение, чтобы исключить запись в SQLite.
-2. Сохраните текущие `/data/leads.db`, `/data/leads.db-wal` и `/data/leads.db-shm` отдельно.
-3. Скопируйте выбранный SQLite backup на `/data/leads.db`, удалите оставшиеся `-wal`/`-shm` только после сохранения и проверьте владельца и права файла.
-4. Запустите приложение, проверьте `/api/health` и наличие ожидаемой записи. При ошибке остановите приложение и верните сохраненные файлы.
+Скрипт создает завершенный SQLite backup в `/data/backups`, атомарно публикует его без перезаписи и печатает только путь. Он не удаляет старые копии. Настройте срок хранения, шифрование и регулярное копирование в отдельное российское хранилище или на другой VDS. Копия в том же Docker volume защищает от ошибки файла, но не является disaster recovery при потере VDS или диска.
+
+## Восстановление
+
+Сначала скопируйте выбранный backup за пределы VDS и убедитесь, что он открывается как SQLite. Затем остановите приложение и восстановите файл через одноразовый контейнер с тем же томом:
+
+```bash
+docker compose --env-file .env.production stop app
+BACKUP_FILE=leads-YYYY-MM-DDTHH-MM-SS-sssZ-UUID.db \
+  docker compose --env-file .env.production run --rm --no-deps \
+  -e BACKUP_FILE --entrypoint sh app -c '
+    set -eu
+    recovery="/data/restore-safety-$(date -u +%Y%m%dT%H%M%SZ)"
+    mkdir "$recovery"
+    for file in /data/leads.db /data/leads.db-wal /data/leads.db-shm; do
+      [ ! -e "$file" ] || cp "$file" "$recovery/"
+    done
+    cp "/data/backups/$BACKUP_FILE" /data/leads.db.restore
+    mv /data/leads.db.restore /data/leads.db
+    rm -f /data/leads.db-wal /data/leads.db-shm
+  '
+docker compose --env-file .env.production up -d app
+curl -fsS https://FINAL_DOMAIN/api/health
+```
+
+Проверьте ожидаемую запись. При ошибке снова остановите приложение и верните файлы из созданного `/data/restore-safety-*`.
 
 ## Проверка перед запуском
 
 - Получено разрешение на публикацию фотографии ребенка.
 - Специалист проверил `/privacy/`, `/consent/` и процедуры оператора персональных данных.
-- Финальный домен, HTTPS, runtime `SITE_URL`, canonical URL и sitemap совпадают.
+- Финальный домен, DNS, HTTPS, runtime `SITE_URL`, canonical URL и sitemap совпадают.
 - ID Метрики согласован и передан при сборке; до согласия посетителя запросов Метрики нет, после согласия проверены только утвержденные цели.
 - Активированы российский доменный ящик, SMTP и адрес получателя уведомлений.
-- Заголовок прокси подтвержден и защищен от подмены прямым клиентом.
+- Caddy перезаписывает `X-Real-IP`, порт `4321` недоступен извне, сжатие HTML/CSS подтверждено.
 - Одна реальная заявка без чувствительных данных создала одну строку в `/data/leads.db` и одно уведомление в российском ящике; повторная доставка того же запроса не создает дубликат.
-- После перезапуска приложения сохраненная строка остается доступной на постоянном томе.
-- `/api/health` отвечает статусом `200` через публичный HTTPS-адрес.
-- Ежедневное расписание backup, хранение, шифрование, off-host копирование и пробное восстановление утверждены оператором.
-- После включения сжатия один мобильный Lighthouse запущен с холодной загрузкой публичного HTTPS-адреса: Performance, Accessibility, Best Practices и SEO не ниже 95, LCP меньше 2,5 с, CLS меньше 0,1. Эта проверка блокирует запуск до появления финального домена и приложения в Timeweb.
+- После `docker compose up -d --force-recreate app` сохраненная строка остается в именованном томе.
+- Host cron создает читаемый backup; утверждены хранение, шифрование, off-host копирование и пробное восстановление.
+- `/api/health` отвечает HTTP `200` через публичный HTTPS-адрес.
+- После включения сжатия один мобильный Lighthouse запущен с холодной загрузкой публичного HTTPS-адреса: Performance, Accessibility, Best Practices и SEO не ниже 95, LCP меньше 2,5 с, CLS меньше 0,1. Проверка блокирует запуск до появления финального домена и VDS.
 
-Локальная диагностика без сжатия показывала Performance 94 и LCP 2,56 с с внешним CSS. Принудительное встраивание CSS ухудшило результат и было удалено; текущий локальный Performance не считается пройденной приемкой.
+Локальная диагностика без proxy-сжатия показывала Performance 94 и LCP 2,56 с с внешним CSS. Принудительное встраивание CSS ухудшило результат и было удалено; локальный Performance не считается пройденной приемкой.
 
 Не настраивайте автоматическую отправку содержимого формы в Gmail без отдельной проверки трансграничной обработки. Указанный на сайте Gmail остается только прямой ссылкой `mailto:`, которую посетитель открывает по собственной инициативе.

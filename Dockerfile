@@ -30,10 +30,15 @@ ENV NODE_ENV=production \
   HOST=0.0.0.0 \
   PORT=4321
 
-COPY --from=build /app/package.json /app/package-lock.json ./
+RUN mkdir -p /data/backups \
+  && chown -R node:node /data
+
+COPY --from=build --chown=node:node /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/scripts ./scripts
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/scripts/validate-env.mjs /app/scripts/backup-db.mjs ./scripts/
+
+USER node
 
 EXPOSE 4321
 
