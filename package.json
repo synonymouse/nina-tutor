@@ -12,6 +12,7 @@
     "build": "npm run check && astro build",
     "start": "node scripts/validate-env.mjs && node dist/server/entry.mjs",
     "preview": "node dist/server/entry.mjs",
+    "backup": "node scripts/backup-db.mjs",
     "test": "vitest run",
     "test:e2e": "bash scripts/test-e2e.sh"
   },
