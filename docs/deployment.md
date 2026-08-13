@@ -6,7 +6,7 @@
 
 1. Создайте VDS с актуальным Debian или Ubuntu в российском дата-центре Timeweb.
 2. Добавьте DNS-записи `A` и при наличии IPv6 `AAAA` финального домена на адрес VDS.
-3. Обновите систему, подключите официальные APT-репозитории Docker и Caddy, установите Docker Engine, Compose plugin и Caddy:
+3. Обновите систему, подключите официальные APT-репозитории Docker и Caddy, установите Docker Engine, Compose plugin версии 2.30 или новее и Caddy:
 
 ```bash
 sudo apt-get update
@@ -43,21 +43,26 @@ RATE_LIMIT_SECRET=<случайный-секрет-не-короче-32-симв
 
 ```bash
 chmod 600 .env.production
-docker compose --env-file .env.production config
+unset SITE_URL PUBLIC_YANDEX_METRICA_ID
+docker compose --env-file .env.production config --quiet
 docker compose --env-file .env.production build --pull
 docker compose --env-file .env.production up -d
 docker compose --env-file .env.production ps
 ```
 
-`compose.yaml` передает в сборку только публичные `SITE_URL` и опциональный ID Метрики, загружает runtime-переменные из `.env.production`, публикует приложение только на `127.0.0.1:4321` и монтирует именованный том в `/data`. Образ запускается от пользователя `node`; новый именованный том получает подготовленные в образе права на `/data` и `/data/backups`.
+Compose 2.30+ загружает runtime-переменные из `.env.production` в формате `raw`, поэтому `$` и другие символы в секретах сохраняются буквально. `SITE_URL` и опциональный ID Метрики передаются в сборку и явно переопределяются в runtime из одной интерполяции, поэтому внутри одного запуска они не расходятся. Переменные текущей shell имеют приоритет при интерполяции: перед проверкой и сборкой обязательно выполните указанный `unset` и проверьте значения в `.env.production`, чтобы не собрать образ для неверного домена. Не запускайте `docker compose config` без `--quiet` в CI или журналируемой shell: разрешенная конфигурация содержит секреты.
+
+`compose.yaml` публикует приложение только на `127.0.0.1:4321` и монтирует именованный том в `/data`. Образ запускается от пользователя `node`; новый именованный том получает подготовленные в образе права на `/data` и `/data/backups`.
 
 Именованный том сохраняется при `docker compose down` и повторном создании контейнера. Команда `docker compose down -v` удаляет базу и резервные копии: на рабочем сервере ее применять нельзя.
 
 Если вместо именованного тома нужен bind mount, сначала создайте каталог с UID/GID пользователя `node` из официального образа (`1000:1000`), затем замените volume в Compose:
 
 ```bash
-sudo install -d -o 1000 -g 1000 /srv/nina-tutor/data /srv/nina-tutor/data/backups
+sudo install -d -m 0700 -o 1000 -g 1000 /srv/nina-tutor/data /srv/nina-tutor/data/backups
 ```
+
+Каталог bind mount закрыт от остальных пользователей VDS; дополнительно проверьте права создаваемых SQLite-файлов с учетом host/container umask.
 
 Образ можно собирать на VDS приведенной командой или в CI с теми же публичными build args и публиковать в registry. Для CI-развертывания замените `build` на закрепленный `image` digest в серверной конфигурации; runtime-секреты в образ не включайте.
 

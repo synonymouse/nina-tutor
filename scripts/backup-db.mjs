@@ -55,6 +55,13 @@ async function main() {
     await rm(temporaryDir, { recursive: true, force: true });
   }
 
+  const backupDirectory = await open(resolvedBackupDir, 'r');
+  try {
+    await backupDirectory.sync();
+  } finally {
+    await backupDirectory.close();
+  }
+
   console.log(target);
 }
 
