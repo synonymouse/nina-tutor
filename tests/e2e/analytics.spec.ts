@@ -8,6 +8,13 @@ declare global {
 
 const storageKey = 'nina:analytics-consent:v1';
 
+async function requireMetricaBuild(page: Page): Promise<void> {
+  test.skip(
+    (await page.locator('[data-cookie-panel]').count()) === 0,
+    'This production build has no Metrica counter configured.',
+  );
+}
+
 async function mockMetrica(context: BrowserContext, requests: string[]): Promise<void> {
   await context.route('https://mc.yandex.ru/**', async (route) => {
     requests.push(route.request().url());
@@ -49,6 +56,7 @@ test('does not load Metrica before consent and persists decline', async ({ conte
   const requests: string[] = [];
   await mockMetrica(context, requests);
   await page.goto('/');
+  await requireMetricaBuild(page);
 
   const panel = page.locator('[data-cookie-panel]');
   await expect(panel).toBeVisible();
@@ -69,6 +77,7 @@ test('loads after acceptance and forwards only approved goals', async ({ context
   const requests: string[] = [];
   await mockMetrica(context, requests);
   await page.goto('/');
+  await requireMetricaBuild(page);
 
   await page.getByRole('button', { name: 'Разрешить' }).click();
   await expect.poll(() => requests.length).toBe(1);
@@ -107,6 +116,7 @@ test('synchronizes cross-tab decline, tears down, and blocks later goals', async
   const requests: string[] = [];
   await mockMetrica(context, requests);
   await page.goto('/');
+  await requireMetricaBuild(page);
   await page.getByRole('button', { name: 'Разрешить' }).click();
   await expect.poll(() => hasYmCall(page, 'init')).toBe(true);
 

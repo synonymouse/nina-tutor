@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 const minimumDynamicPort = 49_152;
 const dynamicPortRange = 65_536 - minimumDynamicPort;
@@ -40,6 +40,9 @@ const runId = process.env.E2E_RUN_ID ?? String(process.pid);
 const port = await selectPort();
 const baseURL = `http://127.0.0.1:${port}`;
 const databasePath = process.env.E2E_DB_PATH ?? join(tmpdir(), `nina-e2e-${runId}.db`);
+const distPath = resolve(process.env.E2E_DIST_DIR ?? process.env.ASTRO_OUT_DIR ?? 'dist');
+const artifactPath =
+  process.env.E2E_ARTIFACT_DIR ?? join(tmpdir(), `nina-e2e-results-${runId}`);
 const databaseFiles = [databasePath, `${databasePath}-shm`, `${databasePath}-wal`]
   .map(shellQuote)
   .join(' ');
@@ -51,7 +54,7 @@ process.env.E2E_DB_PATH = databasePath;
 
 export default defineConfig({
   testDir: './tests/e2e',
-  outputDir: join(tmpdir(), `nina-e2e-results-${runId}`),
+  outputDir: artifactPath,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'dot' : 'list',
@@ -77,7 +80,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `rm -f ${databaseFiles} && trap 'rm -f ${databaseFiles}' EXIT && node dist/server/entry.mjs`,
+    command: `rm -f ${databaseFiles} && trap 'rm -f ${databaseFiles}' EXIT && node ${shellQuote(join(distPath, 'server', 'entry.mjs'))}`,
     env: {
       NODE_ENV: 'test',
       HOST: '127.0.0.1',
