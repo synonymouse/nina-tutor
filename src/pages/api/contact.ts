@@ -3,6 +3,7 @@ import { getServerConfig } from '../../server/config';
 import { getClientIp, errorResponse, wantsJson } from '../../server/http';
 import {
   parseLeadRequest,
+  replayValuesFromParsed,
   UnsupportedMediaTypeError,
 } from '../../server/lead-schema';
 import {
@@ -127,11 +128,20 @@ export const POST: APIRoute = async ({ request }) => {
       400,
       'Проверьте обязательные поля и отдельное согласие.',
       fields,
+      parsed.replay,
     );
   }
 
+  const replay = replayValuesFromParsed(parsed.data);
+
   if (parsed.data.startedAt !== undefined && Date.now() - parsed.data.startedAt < 2500) {
-    return errorResponse(json, 400, 'Пожалуйста, заполните форму чуть внимательнее.');
+    return errorResponse(
+      json,
+      400,
+      'Пожалуйста, заполните форму чуть внимательнее.',
+      undefined,
+      replay,
+    );
   }
 
   if (parsed.data.requestToken) {
@@ -141,10 +151,16 @@ export const POST: APIRoute = async ({ request }) => {
       if (existingLead) return successResponse(json, existingLead.id);
     } catch (error) {
       if (error instanceof IdempotencyConflictError) {
-        return errorResponse(json, 409, idempotencyConflictMessage);
+        return errorResponse(json, 409, idempotencyConflictMessage, undefined, replay);
       }
       console.error('lead_storage_failed');
-      return errorResponse(json, 503, 'Не удалось сохранить заявку. Попробуйте позже.');
+      return errorResponse(
+        json,
+        503,
+        'Не удалось сохранить заявку. Попробуйте позже.',
+        undefined,
+        replay,
+      );
     }
   }
 
@@ -154,13 +170,21 @@ export const POST: APIRoute = async ({ request }) => {
         json,
         429,
         'Слишком много попыток. Попробуйте отправить заявку через 10 минут.',
+        undefined,
+        replay,
       );
       response.headers.set('Retry-After', '600');
       return response;
     }
   } catch {
     console.error('rate_limit_failed');
-    return errorResponse(json, 503, 'Не удалось проверить запрос. Попробуйте позже.');
+    return errorResponse(
+      json,
+      503,
+      'Не удалось проверить запрос. Попробуйте позже.',
+      undefined,
+      replay,
+    );
   }
 
   let lead: ReturnType<typeof saveLead>;
@@ -169,10 +193,16 @@ export const POST: APIRoute = async ({ request }) => {
     lead = saveLead(parsed.data);
   } catch (error) {
     if (error instanceof IdempotencyConflictError) {
-      return errorResponse(json, 409, idempotencyConflictMessage);
+      return errorResponse(json, 409, idempotencyConflictMessage, undefined, replay);
     }
     console.error('lead_storage_failed');
-    return errorResponse(json, 503, 'Не удалось сохранить заявку. Попробуйте позже.');
+    return errorResponse(
+      json,
+      503,
+      'Не удалось сохранить заявку. Попробуйте позже.',
+      undefined,
+      replay,
+    );
   }
 
   if (lead.duplicate) return successResponse(json, lead.id);

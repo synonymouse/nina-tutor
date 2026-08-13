@@ -1,5 +1,16 @@
 const dialog = document.querySelector<HTMLDialogElement>('[data-contact-dialog]');
 
+document
+  .querySelectorAll<HTMLAnchorElement>('.site-header__mobile-panel a')
+  .forEach((navigationLink) => {
+    navigationLink.addEventListener('click', () => {
+      const mobileNavigation = navigationLink.closest<HTMLDetailsElement>(
+        '.site-header__mobile',
+      );
+      if (mobileNavigation) mobileNavigation.open = false;
+    });
+  });
+
 if (dialog && dialog.dataset.initialized !== 'true') {
   dialog.dataset.initialized = 'true';
 

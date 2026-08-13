@@ -359,6 +359,15 @@
     justify-self: center;
   }
 
+  .hero__picture,
+  .hero__image {
+    aspect-ratio: 4 / 5;
+  }
+
+  .hero__image {
+    object-position: center 45%;
+  }
+
   .hero__stamp {
     bottom: 1.5rem;
     width: 6.5rem;
@@ -1474,6 +1483,36 @@
   box-shadow: 0 1rem 3rem rgb(0 0 0 / 0.25);
 }
 
+.analytics-settings {
+  position: fixed;
+  z-index: 40;
+  left: max(1rem, env(safe-area-inset-left));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius-pill);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  box-shadow: 0 0.35rem 1.2rem rgb(0 0 0 / 0.16);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.analytics-settings[hidden] {
+  display: none;
+}
+
+@supports selector(body:has(*)) {
+  body:has([data-cookie-panel]:not([hidden])) .analytics-settings {
+    display: none;
+  }
+}
+
 .cookie-consent[hidden] {
   display: none;
 }
@@ -1512,6 +1551,10 @@
 }
 
 @media (max-width: 680px) {
+  .analytics-settings {
+    bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4rem);
+  }
+
   .cookie-consent {
     grid-template-columns: minmax(0, 1fr);
   }

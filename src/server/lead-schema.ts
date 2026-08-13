@@ -20,6 +20,14 @@ export const leadSchema = z.object({
 
 export type LeadInput = z.infer<typeof leadSchema>;
 
+export interface LeadReplayValues {
+  name: string;
+  preferredContact: string;
+  situation: string;
+  consent: boolean;
+  consentVersion: '1.0' | '';
+}
+
 export class UnsupportedMediaTypeError extends Error {
   constructor() {
     super('Unsupported request content type');
@@ -69,6 +77,31 @@ function sourceFromForm(form: FormData): LeadSource {
   return source;
 }
 
+function replayString(value: unknown, maxLength: number): string {
+  return typeof value === 'string' ? value.slice(0, maxLength) : '';
+}
+
+function replayValuesFromSource(source: LeadSource): LeadReplayValues {
+  return {
+    name: replayString(source.name, 80),
+    preferredContact: replayString(source.preferredContact, 120),
+    situation: replayString(source.situation, 1000),
+    consent:
+      source.consent === true || source.consent === 'on' || source.consent === 'true',
+    consentVersion: source.consentVersion === '1.0' ? '1.0' : '',
+  };
+}
+
+export function replayValuesFromParsed(input: LeadInput): LeadReplayValues {
+  return {
+    name: input.name,
+    preferredContact: input.preferredContact,
+    situation: input.situation,
+    consent: input.consent,
+    consentVersion: input.consentVersion,
+  };
+}
+
 export async function parseLeadRequest(request: Request) {
   const contentType = (request.headers.get('content-type') ?? '')
     .split(';', 1)[0]
@@ -88,7 +121,7 @@ export async function parseLeadRequest(request: Request) {
     throw new UnsupportedMediaTypeError();
   }
 
-  return leadSchema.safeParse({
+  const validation = leadSchema.safeParse({
     name: source.name,
     preferredContact: source.preferredContact,
     situation: source.situation,
@@ -104,4 +137,6 @@ export async function parseLeadRequest(request: Request) {
     utmContent: source.utmContent,
     utmTerm: source.utmTerm,
   });
+
+  return Object.assign(validation, { replay: replayValuesFromSource(source) });
 }

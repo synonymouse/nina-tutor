@@ -5,6 +5,7 @@ import '@fontsource-variable/onest';
 import '../styles/global.css';
 import '../styles/sections.css';
 
+import AnalyticsSettings from '../components/AnalyticsSettings.astro';
 import CookieConsent from '../components/CookieConsent.astro';
 import { site } from '../content/site';
 
@@ -63,5 +64,6 @@ const personJsonLd = JSON.stringify({
     <a class="skip-link" href="#main">Перейти к содержанию</a>
     <CookieConsent />
     <slot />
+    <AnalyticsSettings />
   </body>
 </html>

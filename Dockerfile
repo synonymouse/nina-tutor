@@ -36,7 +36,7 @@ RUN mkdir -p /data/backups \
 COPY --from=build --chown=node:node /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
-COPY --from=build --chown=node:node /app/scripts/validate-env.mjs /app/scripts/backup-db.mjs ./scripts/
+COPY --from=build --chown=node:node /app/scripts/validate-env.mjs /app/scripts/backup-db.mjs /app/scripts/retry-notifications.mjs ./scripts/
 
 USER node
 
