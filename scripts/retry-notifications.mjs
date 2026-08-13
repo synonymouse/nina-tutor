@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import nodemailer from 'nodemailer';
 
 const batchSize = 20;
+const defaultPendingAfterMinutes = 10;
 
 function requiredString(name, { trim = true } = {}) {
   const raw = process.env[name];
@@ -33,6 +34,20 @@ function requiredBoolean(name) {
   throw new Error(`${name} must be true or false`);
 }
 
+function optionalInteger(name, defaultValue, minimum, maximum) {
+  const raw = process.env[name];
+  if (raw === undefined) return defaultValue;
+
+  const value = raw.trim();
+  if (!/^\d+$/.test(value)) throw new Error(`${name} is invalid`);
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw new Error(`${name} is invalid`);
+  }
+  return parsed;
+}
+
 function readConfig() {
   return {
     databasePath: requiredString('LEADS_DB_PATH'),
@@ -43,6 +58,12 @@ function readConfig() {
     user: requiredString('SMTP_USER'),
     password: requiredString('SMTP_PASSWORD', { trim: false }),
     from: requiredEmail('SMTP_FROM'),
+    pendingAfterMinutes: optionalInteger(
+      'NOTIFICATION_PENDING_AFTER_MINUTES',
+      defaultPendingAfterMinutes,
+      1,
+      1_440,
+    ),
   };
 }
 
@@ -54,16 +75,20 @@ async function main() {
   try {
     database = new Database(config.databasePath, { fileMustExist: true });
     database.pragma('busy_timeout = 5000');
+    const stalePendingCutoff = new Date(
+      Date.now() - config.pendingAfterMinutes * 60_000,
+    ).toISOString();
 
     const leads = database
       .prepare(`
-        SELECT id, name, preferred_contact, situation, consent_version
+        SELECT id, name, preferred_contact, situation, consent_version, notification_status
         FROM leads
         WHERE notification_status = 'failed'
+          OR (notification_status = 'pending' AND created_at <= ?)
         ORDER BY created_at ASC, id ASC
         LIMIT ?
       `)
-      .all(batchSize);
+      .all(stalePendingCutoff, batchSize);
 
     if (leads.length === 0) {
       console.log('lead_notification_retry_count 0');
@@ -86,11 +111,15 @@ async function main() {
     });
 
     const markSent = database.prepare(
-      "UPDATE leads SET notification_status = 'sent' WHERE id = ? AND notification_status = 'failed'",
+      "UPDATE leads SET notification_status = 'sent' WHERE id = ? AND notification_status = ?",
+    );
+    const markFailed = database.prepare(
+      "UPDATE leads SET notification_status = 'failed' WHERE id = ? AND notification_status = 'pending'",
     );
     let sent = 0;
     let failed = 0;
     let conflicted = 0;
+    let statusFailed = 0;
 
     for (const lead of leads) {
       try {
@@ -109,8 +138,27 @@ async function main() {
             `Версия согласия: ${lead.consent_version}`,
           ].join('\n'),
         });
+      } catch {
+        failed += 1;
+        console.error('lead_notification_retry_failed', lead.id);
 
-        const update = markSent.run(lead.id);
+        if (lead.notification_status === 'pending') {
+          try {
+            const update = markFailed.run(lead.id);
+            if (update.changes !== 1) {
+              conflicted += 1;
+              console.error('lead_notification_retry_status_conflict', lead.id);
+            }
+          } catch {
+            statusFailed += 1;
+            console.error('lead_notification_retry_status_failed', lead.id);
+          }
+        }
+        continue;
+      }
+
+      try {
+        const update = markSent.run(lead.id, lead.notification_status);
         if (update.changes === 1) {
           sent += 1;
           console.log('lead_notification_retry_sent', lead.id);
@@ -119,15 +167,15 @@ async function main() {
           console.error('lead_notification_retry_status_conflict', lead.id);
         }
       } catch {
-        failed += 1;
-        console.error('lead_notification_retry_failed', lead.id);
+        statusFailed += 1;
+        console.error('lead_notification_retry_status_failed', lead.id);
       }
     }
 
     console.log(
-      `lead_notification_retry_count ${leads.length} sent ${sent} failed ${failed} conflicted ${conflicted}`,
+      `lead_notification_retry_count ${leads.length} sent ${sent} failed ${failed} conflicted ${conflicted} status_failed ${statusFailed}`,
     );
-    if (failed > 0 || conflicted > 0) process.exitCode = 1;
+    if (failed > 0 || conflicted > 0 || statusFailed > 0) process.exitCode = 1;
   } finally {
     transport?.close();
     database?.close();
