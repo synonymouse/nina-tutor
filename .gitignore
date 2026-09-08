@@ -3,6 +3,8 @@
 .worktrees/
 node_modules/
 dist/
+dist-preview/
+dist-preview-build/
 .astro/
 .env
 .env.*

@@ -131,6 +131,7 @@ p {
   line-height: 1.2;
   text-align: center;
   text-decoration: none;
+  cursor: pointer;
   transition: box-shadow 160ms ease, transform 160ms ease, background-color 160ms ease;
 }
 

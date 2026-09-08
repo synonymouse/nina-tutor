@@ -12,6 +12,7 @@
     "build": "npm run check && astro build",
     "start": "node scripts/validate-env.mjs && node dist/server/entry.mjs",
     "preview": "node dist/server/entry.mjs",
+    "deploy:preview": "node scripts/deploy-preview.mjs",
     "backup": "node scripts/backup-db.mjs",
     "retry:notifications": "node scripts/retry-notifications.mjs",
     "test": "vitest run",

@@ -170,7 +170,7 @@ export function errorResponse(
           <span>Коротко о ситуации</span>
           <textarea name="situation" rows="5" minlength="10" maxlength="1000" required>${escapeHtml(replay?.situation ?? '')}</textarea>
         </label>
-        <p class="warning">Не указывайте фамилию ребенка, диагнозы, документы и другие чувствительные сведения.</p>
+        <p class="warning">Не указывайте фамилию ребёнка, диагнозы, документы и другие чувствительные сведения.</p>
         <label class="consent">
           <input type="checkbox" name="consent" required${replay?.consent ? ' checked' : ''}>
           <span>Даю <a href="/consent/" target="_blank" rel="noopener">согласие на обработку персональных данных</a> и ознакомился(-ась) с <a href="/privacy/" target="_blank" rel="noopener">политикой</a>.</span>

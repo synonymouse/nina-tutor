@@ -576,7 +576,7 @@
 
 .outcomes__list li::before {
   position: absolute;
-  top: 0.68em;
+  top: 0.5lh;
   left: 0;
   width: 0.55rem;
   height: 0.55rem;
@@ -584,6 +584,7 @@
   border-radius: 50%;
   background: var(--rose);
   content: '';
+  transform: translateY(-50%);
 }
 
 .outcomes__list--child li {
@@ -596,6 +597,10 @@
 .outcomes__list--child li:first-child {
   padding-top: 0;
   border-top: 0;
+}
+
+.outcomes__list--child li:not(:first-child)::before {
+  top: calc(var(--space-4) + 0.5lh);
 }
 
 .outcomes__list--child strong {
@@ -708,6 +713,7 @@
   display: grid;
   min-width: 0;
   grid-template-columns: 5rem minmax(0, 1fr);
+  align-items: baseline;
   gap: var(--space-5);
   padding: var(--space-5) var(--space-4);
   border-top: 2px solid var(--ink);
@@ -724,6 +730,7 @@
   display: grid;
   min-width: 0;
   grid-template-columns: minmax(10rem, 0.45fr) minmax(0, 1fr);
+  align-items: baseline;
   gap: var(--space-5);
 }
 
@@ -1302,10 +1309,6 @@
   text-align: left;
   text-decoration: none;
   cursor: pointer;
-}
-
-.contact-dialog__options :nth-child(2) {
-  background: var(--butter);
 }
 
 .contact-dialog__options :is(a, button):hover {
